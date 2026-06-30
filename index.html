@@ -1409,17 +1409,22 @@ function openParticleView() {
   const aspect = sw / sh;
   const worldH = 4;
 
-  // Collect only FG pixels
-  const fgXY = [];
+  // Collect both pixel sets
+  const fgXY = [], bgXY = [];
   for (let i = 0; i < sw * sh; i++) {
     const r = sData[i*4], g = sData[i*4+1], b = sData[i*4+2];
     const dFG = Math.abs(r-fg.r) + Math.abs(g-fg.g) + Math.abs(b-fg.b);
     const dBG = Math.abs(r-bg.r) + Math.abs(g-bg.g) + Math.abs(b-bg.b);
-    if (dFG <= dBG) fgXY.push(i);
+    if (dFG <= dBG) fgXY.push(i); else bgXY.push(i);
   }
+  // Fewer pixels = the dot/pattern; more pixels = background fill
+  const useFG   = fgXY.length <= bgXY.length;
+  const useXY   = useFG ? fgXY : bgXY;
+  const partHex = useFG ? fgHex : color1In.value;
+  const bgHex2  = useFG ? color1In.value : fgHex;
 
   // Double count: front + back hemisphere for sphere mode
-  const countFG    = fgXY.length;
+  const countFG    = useXY.length;
   const count      = countFG * 2;
   const flatPos    = new Float32Array(count * 3);
   const spherePos  = new Float32Array(count * 3);
@@ -1429,11 +1434,12 @@ function openParticleView() {
   const velocities = new Float32Array(count * 3);
   const pColors    = new Float32Array(count * 3);
 
-  const fgR = fg.r / 255, fgG = fg.g / 255, fgB = fg.b / 255;
+  const partRGB = hexToRgb(partHex);
+  const fgR = partRGB.r / 255, fgG = partRGB.g / 255, fgB = partRGB.b / 255;
 
-  // Flat positions: front half = random Z, back half = mirrored Z
+  // Flat positions: exact pixel XY, Z=0 so it matches the 2D dithered image
   for (let i = 0; i < countFG; i++) {
-    const idx = fgXY[i];
+    const idx = useXY[i];
     const px  = idx % sw, py = Math.floor(idx / sw);
     const x   = (px / sw - 0.5) * worldH * aspect;
     const y   = -(py / sh - 0.5) * worldH;
@@ -1441,18 +1447,18 @@ function openParticleView() {
     flatPos[(i+countFG)*3]   = x; flatPos[(i+countFG)*3+1] = y; flatPos[(i+countFG)*3+2] = 0;
   }
 
-  // Sphere positions: centroid + radius from FG pixels
+  // Sphere positions: centroid + radius from particle pixels
   let sumX = 0, sumY = 0;
-  for (const idx of fgXY) { sumX += idx % sw; sumY += Math.floor(idx / sw); }
+  for (const idx of useXY) { sumX += idx % sw; sumY += Math.floor(idx / sw); }
   const cxPx = sumX / countFG, cyPx = sumY / countFG;
   let maxR = 0;
-  for (const idx of fgXY) {
+  for (const idx of useXY) {
     const dx = (idx % sw) - cxPx, dy = Math.floor(idx / sw) - cyPx;
     maxR = Math.max(maxR, Math.sqrt(dx*dx + dy*dy));
   }
   const sphereR = worldH * 0.48;
   for (let i = 0; i < countFG; i++) {
-    const idx = fgXY[i];
+    const idx = useXY[i];
     const nx  = ((idx % sw) - cxPx) / (maxR || 1);
     const ny  = (Math.floor(idx / sw) - cyPx) / (maxR || 1);
     const nz  = Math.sqrt(Math.max(0, 1 - nx*nx - ny*ny));
@@ -1485,7 +1491,7 @@ function openParticleView() {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setClearColor(parseInt(color1In.value.replace('#',''), 16));
+  renderer.setClearColor(parseInt(bgHex2.replace('#',''), 16));
 
   const scene  = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.01, 100);
@@ -1660,10 +1666,9 @@ function openParticleView() {
   document.getElementById('p3dDepthControl').style.display = 'none';
   window.addEventListener('resize', onResize);
 
-  const bgHex = color1In.value;
   p3d = {
     renderer, animId, onMouseMove, onResize,
-    spherePos, flatPos, count, fgHex, bgHex, sphereR,
+    spherePos, flatPos, count, fgHex: partHex, bgHex: bgHex2, sphereR,
     currentShape: () => currentShape,
     pSize: parseFloat(document.getElementById('p3dSize').value),
     radius: parseFloat(radiusSlider.value),
