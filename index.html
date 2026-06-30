@@ -198,21 +198,24 @@
   .color-row:focus-within { border-color: var(--accent); }
 
   .color-swatch {
-    width: 18px; height: 18px;
+    position: relative;
+    width: 22px; height: 22px;
     border-radius: 4px;
     border: 1px solid rgba(255,255,255,0.15);
     flex-shrink: 0;
+    overflow: hidden;
     cursor: pointer;
-    transition: transform 0.1s;
   }
-
-  .color-swatch:hover { transform: scale(1.1); }
 
   .color-swatch input[type="color"] {
     position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
     opacity: 0;
-    width: 0; height: 0;
-    pointer-events: none;
+    cursor: pointer;
+    border: none;
+    padding: 0;
   }
 
   .color-hex-input {
@@ -717,15 +720,19 @@ conSlider.addEventListener('input', () => {
   document.getElementById('contrastVal').textContent = (conSlider.value > 0 ? '+' : '') + conSlider.value;
   scheduleRender();
 });
-invertChk.addEventListener('change', scheduleRender);
-ditherType.addEventListener('change', scheduleRender);
+invertChk.addEventListener('change', () => scheduleRender(true));
+ditherType.addEventListener('change', () => scheduleRender(true));
 
 // ──────────────────────────────────────────────
 // Color pickers
 // ──────────────────────────────────────────────
 function isValidHex(v) { return /^#[0-9a-fA-F]{6}$/.test(v); }
 
-function applyColor(which, hex) {
+function clearPresetSelection() {
+  document.querySelectorAll('.preset').forEach(x => x.classList.remove('active'));
+}
+
+function applyColor(which, hex, fromPreset = false) {
   if (which === 1) {
     color1In.value = hex;
     color1Hex.value = hex;
@@ -735,16 +742,13 @@ function applyColor(which, hex) {
     color2Hex.value = hex;
     color2Swatch.style.background = hex;
   }
-  scheduleRender();
+  if (!fromPreset) clearPresetSelection();
+  scheduleRender(true);
 }
 
-// Native color picker → update hex text + swatch
+// Native color picker → update hex text + swatch instantly
 color1In.addEventListener('input', () => applyColor(1, color1In.value));
 color2In.addEventListener('input', () => applyColor(2, color2In.value));
-
-// Click swatch to open picker
-color1Swatch.addEventListener('click', () => color1In.click());
-color2Swatch.addEventListener('click', () => color2In.click());
 
 // Typed hex input
 function handleHexInput(e, which) {
@@ -756,7 +760,7 @@ function handleHexInput(e, which) {
 color1Hex.addEventListener('input', e => handleHexInput(e, 1));
 color2Hex.addEventListener('input', e => handleHexInput(e, 2));
 
-// On blur: normalise & reformat
+// On blur: normalise back to picker value
 color1Hex.addEventListener('blur', () => { color1Hex.value = color1In.value; });
 color2Hex.addEventListener('blur', () => { color2Hex.value = color2In.value; });
 
@@ -777,8 +781,8 @@ function buildPresets() {
     el.addEventListener('click', () => {
       document.querySelectorAll('.preset').forEach(x => x.classList.remove('active'));
       el.classList.add('active');
-      applyColor(1, p.c1);
-      applyColor(2, p.c2);
+      applyColor(1, p.c1, true);
+      applyColor(2, p.c2, true);
     });
     presetList.appendChild(el);
   });
@@ -878,13 +882,17 @@ function applyView() {
 // ──────────────────────────────────────────────
 // Render
 // ──────────────────────────────────────────────
-function scheduleRender() {
+function scheduleRender(immediate = false) {
   if (processing) {
     pendingRender = true;
     return;
   }
   clearTimeout(renderTimeout);
-  renderTimeout = setTimeout(render, 40);
+  if (immediate) {
+    render();
+  } else {
+    renderTimeout = setTimeout(render, 30);
+  }
 }
 
 async function render() {
