@@ -542,6 +542,30 @@
   .p3d-control label { font-size: 11px; color: var(--muted); }
   .p3d-control .val { font-size: 11px; color: var(--text); min-width: 28px; text-align: right; }
 
+  .shape-toggle {
+    display: flex;
+    gap: 4px;
+  }
+
+  .shape-btn {
+    flex: 1;
+    padding: 5px 0;
+    border-radius: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    transition: all 0.15s;
+  }
+
+  .shape-btn.active {
+    background: var(--surface2);
+    color: var(--text);
+    border-color: var(--accent);
+  }
+
   .p3d-hint {
     position: absolute;
     bottom: 20px;
@@ -763,6 +787,15 @@
     </div>
     <div class="p3d-controls">
       <div class="p3d-control">
+        <div class="p3d-control-row" style="margin-bottom:5px">
+          <label>Shape</label>
+        </div>
+        <div class="shape-toggle">
+          <button class="shape-btn" data-shape="flat">Flat</button>
+          <button class="shape-btn active" data-shape="sphere">Sphere</button>
+        </div>
+      </div>
+      <div class="p3d-control">
         <div class="p3d-control-row">
           <label>Particle size</label>
           <span class="val" id="p3dSizeVal">0.03</span>
@@ -783,7 +816,7 @@
         </div>
         <input type="range" id="p3dForce" min="0.01" max="0.4" step="0.01" value="0.10">
       </div>
-      <div class="p3d-control">
+      <div class="p3d-control" id="p3dDepthControl" style="display:none">
         <div class="p3d-control-row">
           <label>Depth scatter</label>
           <span class="val" id="p3dDepthVal">0.5</span>
@@ -1386,30 +1419,57 @@ function openParticleView() {
   }
 
   const count = fgXY.length;
-  const origPos    = new Float32Array(count * 3);
-  const positions  = new Float32Array(count * 3);
+  const flatPos    = new Float32Array(count * 3);
+  const spherePos  = new Float32Array(count * 3);
+  const origPos    = new Float32Array(count * 3); // current rest target
+  const positions  = new Float32Array(count * 3); // live positions
+  const morphPos   = new Float32Array(count * 3); // lerp target when morphing
   const velocities = new Float32Array(count * 3);
   const pColors    = new Float32Array(count * 3);
 
   const fgR = fg.r / 255, fgG = fg.g / 255, fgB = fg.b / 255;
 
+  // Flat positions
   for (let i = 0; i < count; i++) {
     const idx = fgXY[i];
-    const px  = idx % sw;
-    const py  = Math.floor(idx / sw);
-    const x   = (px / sw - 0.5) * worldH * aspect;
-    const y   = -(py / sh - 0.5) * worldH;
-    const z   = (Math.random() - 0.5) * depthRange;
+    const px  = idx % sw, py = Math.floor(idx / sw);
+    flatPos[i*3]   = (px / sw - 0.5) * worldH * aspect;
+    flatPos[i*3+1] = -(py / sh - 0.5) * worldH;
+    flatPos[i*3+2] = (Math.random() - 0.5) * depthRange;
+  }
 
-    origPos[i*3]   = positions[i*3]   = x;
-    origPos[i*3+1] = positions[i*3+1] = y;
-    origPos[i*3+2] = positions[i*3+2] = z;
+  // Sphere positions — centroid + radius from FG pixels
+  let sumX = 0, sumY = 0;
+  for (const idx of fgXY) { sumX += idx % sw; sumY += Math.floor(idx / sw); }
+  const cxPx = sumX / count, cyPx = sumY / count;
+  let maxR = 0;
+  for (const idx of fgXY) {
+    const dx = (idx % sw) - cxPx, dy = Math.floor(idx / sw) - cyPx;
+    maxR = Math.max(maxR, Math.sqrt(dx*dx + dy*dy));
+  }
+  const sphereR = worldH * 0.48;
+  for (let i = 0; i < count; i++) {
+    const idx = fgXY[i];
+    const nx  = ((idx % sw) - cxPx) / (maxR || 1);
+    const ny  = (Math.floor(idx / sw) - cyPx) / (maxR || 1);
+    const d2  = nx*nx + ny*ny;
+    const nz  = Math.sqrt(Math.max(0, 1 - d2));
+    spherePos[i*3]   =  nx * sphereR;
+    spherePos[i*3+1] = -ny * sphereR;
+    spherePos[i*3+2] =  nz * sphereR;
+  }
 
-    // Slight brightness variation by depth for 3D feel
-    const bright = 0.75 + 0.25 * ((z / (depthRange || 1)) + 0.5);
-    pColors[i*3]   = fgR * bright;
-    pColors[i*3+1] = fgG * bright;
-    pColors[i*3+2] = fgB * bright;
+  // Start in sphere mode
+  let currentShape = 'sphere';
+  let morphProgress = 1; // 1 = at rest, animating when < 1
+  origPos.set(spherePos);
+  positions.set(spherePos);
+  morphPos.set(spherePos);
+
+  for (let i = 0; i < count; i++) {
+    pColors[i*3]   = fgR;
+    pColors[i*3+1] = fgG;
+    pColors[i*3+2] = fgB;
   }
 
   // Three.js setup
@@ -1436,14 +1496,11 @@ function openParticleView() {
     attribute vec3 color;
     varying vec3  vColor;
     varying float vAlpha;
-    uniform float uSize;
-    uniform float uDepthRange;
-    uniform float uViewH;
+    uniform float uSize, uZMin, uZMax, uViewH;
     void main() {
       vColor = color;
-      float t = (uDepthRange > 0.001)
-        ? clamp((position.z + uDepthRange * 0.5) / uDepthRange, 0.0, 1.0)
-        : 1.0;
+      float range = uZMax - uZMin;
+      float t = (range > 0.001) ? clamp((position.z - uZMin) / range, 0.0, 1.0) : 1.0;
       vAlpha = t * t;
       vec4 mv = modelViewMatrix * vec4(position, 1.0);
       gl_Position  = projectionMatrix * mv;
@@ -1462,9 +1519,10 @@ function openParticleView() {
 
   const material = new THREE.ShaderMaterial({
     uniforms: {
-      uSize:       { value: parseFloat(document.getElementById('p3dSize').value) },
-      uDepthRange: { value: depthRange },
-      uViewH:      { value: window.innerHeight },
+      uSize:  { value: parseFloat(document.getElementById('p3dSize').value) },
+      uZMin:  { value: 0 },
+      uZMax:  { value: 1 },
+      uViewH: { value: window.innerHeight },
     },
     vertexShader:   VERT,
     fragmentShader: FRAG,
@@ -1507,6 +1565,32 @@ function openParticleView() {
     document.getElementById('p3dDepthVal').textContent = depthSlider.value;
   });
 
+  // Set Z uniforms based on shape
+  function updateZUniforms() {
+    if (currentShape === 'sphere') {
+      material.uniforms.uZMin.value = 0;
+      material.uniforms.uZMax.value = sphereR;
+    } else {
+      material.uniforms.uZMin.value = -depthRange / 2;
+      material.uniforms.uZMax.value =  depthRange / 2;
+    }
+  }
+  updateZUniforms();
+
+  // Shape toggle
+  document.querySelectorAll('.shape-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const shape = btn.dataset.shape;
+      if (shape === currentShape) return;
+      currentShape = shape;
+      document.querySelectorAll('.shape-btn').forEach(b => b.classList.toggle('active', b.dataset.shape === shape));
+      document.getElementById('p3dDepthControl').style.display = shape === 'flat' ? '' : 'none';
+      morphPos.set(shape === 'sphere' ? spherePos : flatPos);
+      morphProgress = 0;
+      updateZUniforms();
+    });
+  });
+
   // Physics loop
   const SPRING = 0.05, DAMPING = 0.82;
   let animId;
@@ -1517,6 +1601,15 @@ function openParticleView() {
     const radius = parseFloat(radiusSlider.value);
     const force  = parseFloat(forceSlider.value);
     const mx = mouseWorld.x, my = mouseWorld.y;
+
+    // Morph origPos toward morphPos
+    if (morphProgress < 1) {
+      morphProgress = Math.min(1, morphProgress + 0.025);
+      const t = morphProgress < 1 ? 1 - Math.pow(1 - morphProgress, 3) : 1;
+      for (let i = 0; i < count * 3; i++) {
+        origPos[i] = origPos[i] + (morphPos[i] - origPos[i]) * 0.08;
+      }
+    }
 
     for (let i = 0; i < count; i++) {
       const ix = i*3, iy = i*3+1, iz = i*3+2;
@@ -1549,11 +1642,16 @@ function openParticleView() {
     renderer.setSize(window.innerWidth, window.innerHeight);
     material.uniforms.uViewH.value = window.innerHeight;
   }
+
+  // Init shape controls state
+  document.querySelectorAll('.shape-btn').forEach(b => b.classList.toggle('active', b.dataset.shape === 'sphere'));
+  document.getElementById('p3dDepthControl').style.display = 'none';
   window.addEventListener('resize', onResize);
 
   p3d = {
     renderer, animId, onMouseMove, onResize,
-    origPos, count, fgHex, depthRange,
+    spherePos, flatPos, count, fgHex, sphereR, depthRange,
+    currentShape: () => currentShape,
     pSize: parseFloat(document.getElementById('p3dSize').value),
     radius: parseFloat(radiusSlider.value),
     force: parseFloat(forceSlider.value),
@@ -1577,11 +1675,15 @@ document.getElementById('p3dExport').addEventListener('click', exportParticleHTM
 
 function exportParticleHTML() {
   if (!p3d) return;
-  const { origPos, count, fgHex, depthRange, pSize, radius, force } = p3d;
+  const { spherePos, flatPos, count, fgHex, sphereR, depthRange, pSize, radius, force } = p3d;
+  const shape = p3d.currentShape();
+  const srcPos = shape === 'sphere' ? spherePos : flatPos;
+  const zMin = shape === 'sphere' ? 0 : -depthRange / 2;
+  const zMax = shape === 'sphere' ? sphereR : depthRange / 2;
 
   // Pack positions as compact rounded array
   const pts = [];
-  for (let i = 0; i < count * 3; i++) pts.push(Math.round(origPos[i] * 1000) / 1000);
+  for (let i = 0; i < count * 3; i++) pts.push(Math.round(srcPos[i] * 1000) / 1000);
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -1599,14 +1701,15 @@ canvas{display:block;width:100%;height:100%}
 <canvas id="c"></canvas>
 <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"><\/script>
 <script>
-const RAW         = ${JSON.stringify(pts)};
-const FG_HEX      = '${fgHex}';
-const PSIZE       = ${pSize};
-const RADIUS      = ${radius};
-const FORCE       = ${force};
-const DEPTH_RANGE = ${depthRange};
-const SPRING      = 0.05;
-const DAMPING     = 0.82;
+const RAW    = ${JSON.stringify(pts)};
+const FG_HEX = '${fgHex}';
+const PSIZE  = ${pSize};
+const RADIUS = ${radius};
+const FORCE  = ${force};
+const Z_MIN  = ${zMin};
+const Z_MAX  = ${zMax};
+const SPRING = 0.05;
+const DAMPING= 0.82;
 
 const count     = RAW.length / 3;
 const origPos   = new Float32Array(RAW);
@@ -1635,15 +1738,16 @@ geometry.setAttribute('position',posAttr);
 geometry.setAttribute('color',new THREE.BufferAttribute(pColors,3));
 
 const material = new THREE.ShaderMaterial({
-  uniforms:{uSize:{value:PSIZE},uDepthRange:{value:DEPTH_RANGE},uViewH:{value:innerHeight}},
+  uniforms:{uSize:{value:PSIZE},uZMin:{value:Z_MIN},uZMax:{value:Z_MAX},uViewH:{value:innerHeight}},
   vertexShader:\`
     attribute vec3 color;
     varying vec3 vColor;
     varying float vAlpha;
-    uniform float uSize,uDepthRange,uViewH;
+    uniform float uSize,uZMin,uZMax,uViewH;
     void main(){
       vColor=color;
-      float t=(uDepthRange>0.001)?clamp((position.z+uDepthRange*0.5)/uDepthRange,0.0,1.0):1.0;
+      float range=uZMax-uZMin;
+      float t=(range>0.001)?clamp((position.z-uZMin)/range,0.0,1.0):1.0;
       vAlpha=t*t;
       vec4 mv=modelViewMatrix*vec4(position,1.0);
       gl_Position=projectionMatrix*mv;
