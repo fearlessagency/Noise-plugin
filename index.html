@@ -1437,9 +1437,8 @@ function openParticleView() {
     const px  = idx % sw, py = Math.floor(idx / sw);
     const x   = (px / sw - 0.5) * worldH * aspect;
     const y   = -(py / sh - 0.5) * worldH;
-    const z   = (Math.random() - 0.5) * depthRange;
-    flatPos[i*3]   = x; flatPos[i*3+1] = y; flatPos[i*3+2] = z;
-    flatPos[(i+countFG)*3]   = x; flatPos[(i+countFG)*3+1] = y; flatPos[(i+countFG)*3+2] = -z;
+    flatPos[i*3]   = x; flatPos[i*3+1] = y; flatPos[i*3+2] = 0;
+    flatPos[(i+countFG)*3]   = x; flatPos[(i+countFG)*3+1] = y; flatPos[(i+countFG)*3+2] = 0;
   }
 
   // Sphere positions: centroid + radius from FG pixels
@@ -1467,12 +1466,12 @@ function openParticleView() {
     spherePos[(i+countFG)*3+2] = -nz * sphereR;
   }
 
-  // Start in sphere mode
-  let currentShape = 'sphere';
+  // Start in flat mode — looks identical to the dithered image
+  let currentShape = 'flat';
   let morphProgress = 1;
-  origPos.set(spherePos);
-  positions.set(spherePos);
-  morphPos.set(spherePos);
+  origPos.set(flatPos);
+  positions.set(flatPos);
+  morphPos.set(flatPos);
 
   for (let i = 0; i < count; i++) {
     pColors[i*3] = fgR; pColors[i*3+1] = fgG; pColors[i*3+2] = fgB;
@@ -1486,7 +1485,7 @@ function openParticleView() {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setClearColor(0x0a0a0c);
+  renderer.setClearColor(parseInt(color1In.value.replace('#',''), 16));
 
   const scene  = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.01, 100);
@@ -1530,10 +1529,10 @@ function openParticleView() {
   const material = new THREE.ShaderMaterial({
     uniforms: {
       uSize:   { value: parseFloat(document.getElementById('p3dSize').value) },
-      uZMin:   { value: -sphereR },
-      uZMax:   { value:  sphereR },
+      uZMin:   { value: 0 },
+      uZMax:   { value: 0 },
       uViewH:  { value: window.innerHeight },
-      uSphere: { value: 1.0 },
+      uSphere: { value: 0.0 },
     },
     vertexShader:   VERT,
     fragmentShader: FRAG,
@@ -1583,9 +1582,9 @@ function openParticleView() {
       material.uniforms.uZMax.value   =  sphereR;
       material.uniforms.uSphere.value =  1.0;
     } else {
-      material.uniforms.uZMin.value   = -depthRange / 2;
-      material.uniforms.uZMax.value   =  depthRange / 2;
-      material.uniforms.uSphere.value =  0.0;
+      material.uniforms.uZMin.value   = 0;
+      material.uniforms.uZMax.value   = 0;
+      material.uniforms.uSphere.value = 0.0;
     }
   }
   updateZUniforms();
@@ -1657,13 +1656,14 @@ function openParticleView() {
   }
 
   // Init shape controls state
-  document.querySelectorAll('.shape-btn').forEach(b => b.classList.toggle('active', b.dataset.shape === 'sphere'));
+  document.querySelectorAll('.shape-btn').forEach(b => b.classList.toggle('active', b.dataset.shape === 'flat'));
   document.getElementById('p3dDepthControl').style.display = 'none';
   window.addEventListener('resize', onResize);
 
+  const bgHex = color1In.value;
   p3d = {
     renderer, animId, onMouseMove, onResize,
-    spherePos, flatPos, count, fgHex, sphereR, depthRange,
+    spherePos, flatPos, count, fgHex, bgHex, sphereR,
     currentShape: () => currentShape,
     pSize: parseFloat(document.getElementById('p3dSize').value),
     radius: parseFloat(radiusSlider.value),
@@ -1688,11 +1688,11 @@ document.getElementById('p3dExport').addEventListener('click', exportParticleHTM
 
 function exportParticleHTML() {
   if (!p3d) return;
-  const { spherePos, flatPos, count, fgHex, sphereR, depthRange, pSize, radius, force } = p3d;
+  const { spherePos, flatPos, count, fgHex, bgHex, sphereR, pSize, radius, force } = p3d;
   const shape = p3d.currentShape();
   const srcPos = shape === 'sphere' ? spherePos : flatPos;
-  const zMin = shape === 'sphere' ? 0 : -depthRange / 2;
-  const zMax = shape === 'sphere' ? sphereR : depthRange / 2;
+  const zMin = shape === 'sphere' ? -sphereR : 0;
+  const zMax = shape === 'sphere' ? sphereR : 0;
 
   // Pack positions as compact rounded array
   const pts = [];
@@ -1738,7 +1738,7 @@ const canvas   = document.getElementById('c');
 const renderer = new THREE.WebGLRenderer({canvas,antialias:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 renderer.setSize(innerWidth,innerHeight);
-renderer.setClearColor(0x0a0a0c);
+renderer.setClearColor(0x${bgHex.replace('#','')});
 
 const scene  = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(55,innerWidth/innerHeight,0.01,100);
