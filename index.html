@@ -1418,58 +1418,64 @@ function openParticleView() {
     if (dFG <= dBG) fgXY.push(i);
   }
 
-  const count = fgXY.length;
+  // Double count: front + back hemisphere for sphere mode
+  const countFG    = fgXY.length;
+  const count      = countFG * 2;
   const flatPos    = new Float32Array(count * 3);
   const spherePos  = new Float32Array(count * 3);
-  const origPos    = new Float32Array(count * 3); // current rest target
-  const positions  = new Float32Array(count * 3); // live positions
-  const morphPos   = new Float32Array(count * 3); // lerp target when morphing
+  const origPos    = new Float32Array(count * 3);
+  const positions  = new Float32Array(count * 3);
+  const morphPos   = new Float32Array(count * 3);
   const velocities = new Float32Array(count * 3);
   const pColors    = new Float32Array(count * 3);
 
   const fgR = fg.r / 255, fgG = fg.g / 255, fgB = fg.b / 255;
 
-  // Flat positions
-  for (let i = 0; i < count; i++) {
+  // Flat positions: front half = random Z, back half = mirrored Z
+  for (let i = 0; i < countFG; i++) {
     const idx = fgXY[i];
     const px  = idx % sw, py = Math.floor(idx / sw);
-    flatPos[i*3]   = (px / sw - 0.5) * worldH * aspect;
-    flatPos[i*3+1] = -(py / sh - 0.5) * worldH;
-    flatPos[i*3+2] = (Math.random() - 0.5) * depthRange;
+    const x   = (px / sw - 0.5) * worldH * aspect;
+    const y   = -(py / sh - 0.5) * worldH;
+    const z   = (Math.random() - 0.5) * depthRange;
+    flatPos[i*3]   = x; flatPos[i*3+1] = y; flatPos[i*3+2] = z;
+    flatPos[(i+countFG)*3]   = x; flatPos[(i+countFG)*3+1] = y; flatPos[(i+countFG)*3+2] = -z;
   }
 
-  // Sphere positions — centroid + radius from FG pixels
+  // Sphere positions: centroid + radius from FG pixels
   let sumX = 0, sumY = 0;
   for (const idx of fgXY) { sumX += idx % sw; sumY += Math.floor(idx / sw); }
-  const cxPx = sumX / count, cyPx = sumY / count;
+  const cxPx = sumX / countFG, cyPx = sumY / countFG;
   let maxR = 0;
   for (const idx of fgXY) {
     const dx = (idx % sw) - cxPx, dy = Math.floor(idx / sw) - cyPx;
     maxR = Math.max(maxR, Math.sqrt(dx*dx + dy*dy));
   }
   const sphereR = worldH * 0.48;
-  for (let i = 0; i < count; i++) {
+  for (let i = 0; i < countFG; i++) {
     const idx = fgXY[i];
     const nx  = ((idx % sw) - cxPx) / (maxR || 1);
     const ny  = (Math.floor(idx / sw) - cyPx) / (maxR || 1);
-    const d2  = nx*nx + ny*ny;
-    const nz  = Math.sqrt(Math.max(0, 1 - d2));
+    const nz  = Math.sqrt(Math.max(0, 1 - nx*nx - ny*ny));
+    // Front hemisphere (+Z)
     spherePos[i*3]   =  nx * sphereR;
     spherePos[i*3+1] = -ny * sphereR;
     spherePos[i*3+2] =  nz * sphereR;
+    // Back hemisphere (-Z)
+    spherePos[(i+countFG)*3]   =  nx * sphereR;
+    spherePos[(i+countFG)*3+1] = -ny * sphereR;
+    spherePos[(i+countFG)*3+2] = -nz * sphereR;
   }
 
   // Start in sphere mode
   let currentShape = 'sphere';
-  let morphProgress = 1; // 1 = at rest, animating when < 1
+  let morphProgress = 1;
   origPos.set(spherePos);
   positions.set(spherePos);
   morphPos.set(spherePos);
 
   for (let i = 0; i < count; i++) {
-    pColors[i*3]   = fgR;
-    pColors[i*3+1] = fgG;
-    pColors[i*3+2] = fgB;
+    pColors[i*3] = fgR; pColors[i*3+1] = fgG; pColors[i*3+2] = fgB;
   }
 
   // Three.js setup
@@ -1496,12 +1502,16 @@ function openParticleView() {
     attribute vec3 color;
     varying vec3  vColor;
     varying float vAlpha;
-    uniform float uSize, uZMin, uZMax, uViewH;
+    uniform float uSize, uZMin, uZMax, uViewH, uSphere;
     void main() {
       vColor = color;
       float range = uZMax - uZMin;
       float t = (range > 0.001) ? clamp((position.z - uZMin) / range, 0.0, 1.0) : 1.0;
-      vAlpha = t * t;
+      // Sphere: rim visible (equator t=0.5 = alpha 1), both centers fade out
+      // Flat:   front opaque, back transparent
+      float alphaSphere = 4.0 * t * (1.0 - t);
+      float alphaFlat   = t * t;
+      vAlpha = mix(alphaFlat, alphaSphere, uSphere);
       vec4 mv = modelViewMatrix * vec4(position, 1.0);
       gl_Position  = projectionMatrix * mv;
       gl_PointSize = uSize * (uViewH * 0.5) / -mv.z;
@@ -1519,10 +1529,11 @@ function openParticleView() {
 
   const material = new THREE.ShaderMaterial({
     uniforms: {
-      uSize:  { value: parseFloat(document.getElementById('p3dSize').value) },
-      uZMin:  { value: 0 },
-      uZMax:  { value: 1 },
-      uViewH: { value: window.innerHeight },
+      uSize:   { value: parseFloat(document.getElementById('p3dSize').value) },
+      uZMin:   { value: -sphereR },
+      uZMax:   { value:  sphereR },
+      uViewH:  { value: window.innerHeight },
+      uSphere: { value: 1.0 },
     },
     vertexShader:   VERT,
     fragmentShader: FRAG,
@@ -1565,14 +1576,16 @@ function openParticleView() {
     document.getElementById('p3dDepthVal').textContent = depthSlider.value;
   });
 
-  // Set Z uniforms based on shape
+  // Set Z + sphere uniforms based on shape
   function updateZUniforms() {
     if (currentShape === 'sphere') {
-      material.uniforms.uZMin.value = 0;
-      material.uniforms.uZMax.value = sphereR;
+      material.uniforms.uZMin.value   = -sphereR;
+      material.uniforms.uZMax.value   =  sphereR;
+      material.uniforms.uSphere.value =  1.0;
     } else {
-      material.uniforms.uZMin.value = -depthRange / 2;
-      material.uniforms.uZMax.value =  depthRange / 2;
+      material.uniforms.uZMin.value   = -depthRange / 2;
+      material.uniforms.uZMax.value   =  depthRange / 2;
+      material.uniforms.uSphere.value =  0.0;
     }
   }
   updateZUniforms();
