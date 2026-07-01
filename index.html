@@ -1387,11 +1387,11 @@ function openParticleView() {
 
   const W = outCanvas.width, H = outCanvas.height;
 
-  // Sample at exact resolution (no smoothing) to get crisp 2-color pixels
-  const MAX_P = 60000;
-  const ratio = Math.sqrt((W * H) / MAX_P);
-  const sw = Math.max(1, Math.round(W / ratio));
-  const sh = Math.max(1, Math.round(H / ratio));
+  // Sample at the dithered-dot level: one sample per logical pixel.
+  // This preserves the exact dither pattern instead of blurring it.
+  const pixelScale = parseInt(document.getElementById('scale').value) || 1;
+  const sw = Math.max(1, Math.floor(W / pixelScale));
+  const sh = Math.max(1, Math.floor(H / pixelScale));
 
   const sOff = document.createElement('canvas');
   sOff.width = sw; sOff.height = sh;
@@ -1405,9 +1405,10 @@ function openParticleView() {
   const fg = hexToRgb(fgHex);
   const bg = hexToRgb(color1In.value);
 
-  const depthRange = parseFloat(document.getElementById('p3dDepth').value);
   const aspect = sw / sh;
   const worldH = 4;
+  const fovRad  = 55 * Math.PI / 180;
+  const cameraZ = worldH / (2 * Math.tan(fovRad / 2)); // fills screen height exactly
 
   // Collect both pixel sets
   const fgXY = [], bgXY = [];
@@ -1419,9 +1420,18 @@ function openParticleView() {
   }
   // Fewer pixels = the dot/pattern; more pixels = background fill
   const useFG   = fgXY.length <= bgXY.length;
-  const useXY   = useFG ? fgXY : bgXY;
+  let   useXY   = useFG ? fgXY : bgXY;
   const partHex = useFG ? fgHex : color1In.value;
   const bgHex2  = useFG ? color1In.value : fgHex;
+
+  // Cap at 200k; subsample evenly to keep pattern density uniform
+  const MAX_P = 200000;
+  if (useXY.length > MAX_P) {
+    const sub  = new Array(MAX_P);
+    const step = useXY.length / MAX_P;
+    for (let k = 0; k < MAX_P; k++) sub[k] = useXY[Math.floor(k * step)];
+    useXY = sub;
+  }
 
   // Double count: front + back hemisphere for sphere mode
   const countFG    = useXY.length;
@@ -1495,7 +1505,7 @@ function openParticleView() {
 
   const scene  = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.01, 100);
-  camera.position.z = worldH * 1.4;
+  camera.position.z = cameraZ;
 
   const geometry = new THREE.BufferGeometry();
   const posAttr  = new THREE.BufferAttribute(positions, 3);
@@ -1534,7 +1544,7 @@ function openParticleView() {
 
   const material = new THREE.ShaderMaterial({
     uniforms: {
-      uSize:   { value: parseFloat(document.getElementById('p3dSize').value) },
+      uSize:   { value: worldH / (sh * Math.tan(fovRad / 2)) },
       uZMin:   { value: 0 },
       uZMax:   { value: 0 },
       uViewH:  { value: window.innerHeight },
@@ -1561,8 +1571,13 @@ function openParticleView() {
   function onMouseMove(e) { updateMouseWorld(e.clientX, e.clientY); }
   canvas.addEventListener('mousemove', onMouseMove);
 
+  // Sync size slider to auto-calculated value
+  const autoSize = worldH / (sh * Math.tan(fovRad / 2));
+  const sizeSlider = document.getElementById('p3dSize');
+  sizeSlider.value = Math.min(parseFloat(sizeSlider.max), Math.max(parseFloat(sizeSlider.min), autoSize));
+  document.getElementById('p3dSizeVal').textContent = parseFloat(sizeSlider.value).toFixed(3);
+
   // Slider live-update
-  const sizeSlider   = document.getElementById('p3dSize');
   const radiusSlider = document.getElementById('p3dRadius');
   const forceSlider  = document.getElementById('p3dForce');
   const depthSlider  = document.getElementById('p3dDepth');
