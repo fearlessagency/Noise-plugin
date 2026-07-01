@@ -644,6 +644,7 @@
           <option value="random">Noise — Random Threshold</option>
           <option value="blueNoise">Noise — Blue Noise</option>
           <option value="halftone">Halftone — Circular</option>
+          <option value="halftoneSmooth">Halftone — Smooth Gradient</option>
         </select>
       </div>
     </div>
@@ -1110,28 +1111,72 @@ async function render() {
 
     // Dither
     const gray = toGrayscaleArray(pixels, dw, dh);
-    const result = applyDither(type, gray, dw, dh, thr);
 
-    // Map to colors
-    const outOff = document.createElement('canvas');
-    outOff.width = dw; outOff.height = dh;
-    const octx2 = outOff.getContext('2d');
-    const outData = octx2.createImageData(dw, dh);
-    for (let i = 0; i < result.length; i++) {
-      const c = result[i] ? c2 : c1;
-      outData.data[i * 4 + 0] = c.r;
-      outData.data[i * 4 + 1] = c.g;
-      outData.data[i * 4 + 2] = c.b;
-      outData.data[i * 4 + 3] = 255;
+    if (type === 'halftoneSmooth') {
+      // Smooth circular halftone — draw anti-aliased arcs directly onto output canvas
+      // Circle radius varies continuously with luminance (no binary threshold)
+      outCanvas.width = w;
+      outCanvas.height = h;
+      const outCtx = outCanvas.getContext('2d');
+      // Fill background with color1
+      outCtx.fillStyle = `rgb(${c1.r},${c1.g},${c1.b})`;
+      outCtx.fillRect(0, 0, w, h);
+      outCtx.fillStyle = `rgb(${c2.r},${c2.g},${c2.b})`;
+
+      // Cell size: 4 dither-resolution pixels; each maps to 4*scale output pixels
+      const cell   = 4;
+      const cellPx = cell * scale;       // output pixels per cell
+      const maxR   = cellPx * 0.58;      // max radius — slight overlap in dense darks
+
+      const cols = Math.ceil(dw / cell);
+      const rows = Math.ceil(dh / cell);
+      for (let cy = 0; cy < rows; cy++) {
+        for (let cx = 0; cx < cols; cx++) {
+          // Average luminance over the cell
+          let sum = 0, cnt = 0;
+          for (let dy = 0; dy < cell; dy++) {
+            for (let dx = 0; dx < cell; dx++) {
+              const px = cx * cell + dx, py = cy * cell + dy;
+              if (px < dw && py < dh) { sum += gray[py * dw + px]; cnt++; }
+            }
+          }
+          if (!cnt) continue;
+          const t = (255 - sum / cnt) / 255; // 0=white→no dot, 1=black→full dot
+          const r = Math.sqrt(t) * maxR;      // sqrt gives more midtone dots (like Image #15)
+          if (r < 0.4) continue;
+          outCtx.beginPath();
+          outCtx.arc(
+            (cx * cell + cell / 2) * scale,
+            (cy * cell + cell / 2) * scale,
+            r, 0, Math.PI * 2
+          );
+          outCtx.fill();
+        }
+      }
+    } else {
+      const result = applyDither(type, gray, dw, dh, thr);
+
+      // Map binary result to colors
+      const outOff = document.createElement('canvas');
+      outOff.width = dw; outOff.height = dh;
+      const octx2 = outOff.getContext('2d');
+      const outData = octx2.createImageData(dw, dh);
+      for (let i = 0; i < result.length; i++) {
+        const c = result[i] ? c2 : c1;
+        outData.data[i * 4 + 0] = c.r;
+        outData.data[i * 4 + 1] = c.g;
+        outData.data[i * 4 + 2] = c.b;
+        outData.data[i * 4 + 3] = 255;
+      }
+      octx2.putImageData(outData, 0, 0);
+
+      // Scale up to output canvas
+      outCanvas.width = w;
+      outCanvas.height = h;
+      const outCtx = outCanvas.getContext('2d');
+      outCtx.imageSmoothingEnabled = false;
+      outCtx.drawImage(outOff, 0, 0, w, h);
     }
-    octx2.putImageData(outData, 0, 0);
-
-    // Scale up to output canvas
-    outCanvas.width = w;
-    outCanvas.height = h;
-    const outCtx = outCanvas.getContext('2d');
-    outCtx.imageSmoothingEnabled = false;
-    outCtx.drawImage(outOff, 0, 0, w, h);
 
     applyView();
     updateZoom();
