@@ -1405,10 +1405,15 @@ function openParticleView() {
   const fg = hexToRgb(fgHex);
   const bg = hexToRgb(color1In.value);
 
-  const aspect = sw / sh;
-  const worldH = 4;
-  const fovRad  = 55 * Math.PI / 180;
-  const cameraZ = worldH / (2 * Math.tan(fovRad / 2)); // fills screen height exactly
+  const aspect       = sw / sh;
+  const worldH       = 4;
+  const fovRad       = 55 * Math.PI / 180;
+  const screenAspect = window.innerWidth / window.innerHeight;
+  const imageAspect  = sw / sh;
+  // Contain: camera distance so the full image fits — larger of height-fill or width-fill
+  const cameraZ_h = worldH / (2 * Math.tan(fovRad / 2));
+  const cameraZ_w = worldH * imageAspect / (2 * Math.tan(fovRad / 2) * screenAspect);
+  const cameraZ   = Math.max(cameraZ_h, cameraZ_w);
 
   // Collect both pixel sets
   const fgXY = [], bgXY = [];
@@ -1547,7 +1552,7 @@ function openParticleView() {
       uSize:   { value: worldH / (sh * Math.tan(fovRad / 2)) },
       uZMin:   { value: 0 },
       uZMax:   { value: 0 },
-      uViewH:  { value: window.innerHeight },
+      uViewH:  { value: window.innerHeight * renderer.getPixelRatio() },
       uSphere: { value: 0.0 },
     },
     vertexShader:   VERT,
@@ -1673,7 +1678,7 @@ function openParticleView() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
-    material.uniforms.uViewH.value = window.innerHeight;
+    material.uniforms.uViewH.value = window.innerHeight * renderer.getPixelRatio();
   }
 
   // Init shape controls state
