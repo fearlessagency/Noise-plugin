@@ -1432,18 +1432,40 @@ function openParticleView() {
 
   const W = outCanvas.width, H = outCanvas.height;
 
-  // Sample at the dithered-dot level: one sample per logical pixel.
-  // This preserves the exact dither pattern instead of blurring it.
-  const pixelScale = parseInt(document.getElementById('scale').value) || 1;
-  const sw = Math.max(1, Math.floor(W / pixelScale));
-  const sh = Math.max(1, Math.floor(H / pixelScale));
+  const pixelScale      = parseInt(document.getElementById('scale').value) || 1;
+  const isHalftoneSmooth = ditherType.value === 'halftoneSmooth';
 
-  const sOff = document.createElement('canvas');
-  sOff.width = sw; sOff.height = sh;
-  const sCtx = sOff.getContext('2d');
-  sCtx.imageSmoothingEnabled = false;
-  sCtx.drawImage(outCanvas, 0, 0, sw, sh);
-  const sData = sCtx.getImageData(0, 0, sw, sh).data;
+  let sw, sh, sData;
+
+  if (isHalftoneSmooth) {
+    // Halftone smooth: one particle per circle center (cell = 4 dither pixels)
+    // Sample outCanvas at cell-center positions so we hit inside each circle, not its corner
+    const cellPx = 4 * pixelScale; // output pixels per halftone cell
+    sw = Math.max(1, Math.ceil(W / cellPx));
+    sh = Math.max(1, Math.ceil(H / cellPx));
+    const fullData = outCanvas.getContext('2d').getImageData(0, 0, W, H).data;
+    sData = new Uint8ClampedArray(sw * sh * 4);
+    for (let cy = 0; cy < sh; cy++) {
+      for (let cx = 0; cx < sw; cx++) {
+        const ox = Math.min(W - 1, Math.round(cx * cellPx + cellPx / 2));
+        const oy = Math.min(H - 1, Math.round(cy * cellPx + cellPx / 2));
+        const oi = (oy * W + ox) * 4;
+        const si = (cy * sw + cx) * 4;
+        sData[si] = fullData[oi]; sData[si+1] = fullData[oi+1];
+        sData[si+2] = fullData[oi+2]; sData[si+3] = 255;
+      }
+    }
+  } else {
+    // All other modes: sample at dithered-dot resolution (one sample per logical pixel)
+    sw = Math.max(1, Math.floor(W / pixelScale));
+    sh = Math.max(1, Math.floor(H / pixelScale));
+    const sOff = document.createElement('canvas');
+    sOff.width = sw; sOff.height = sh;
+    const sCtx = sOff.getContext('2d');
+    sCtx.imageSmoothingEnabled = false;
+    sCtx.drawImage(outCanvas, 0, 0, sw, sh);
+    sData = sCtx.getImageData(0, 0, sw, sh).data;
+  }
 
   // FG color (color2) — only these pixels become particles
   const fgHex = color2In.value;
