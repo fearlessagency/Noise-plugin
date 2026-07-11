@@ -645,6 +645,8 @@
           <option value="blueNoise">Noise — Blue Noise</option>
           <option value="halftone">Halftone — Circular</option>
           <option value="halftoneSmooth">Halftone — Smooth Gradient</option>
+          <option value="dotScatter">Halftone — Dot Scatter</option>
+          <option value="ringDots">Halftone — Ring Dots</option>
         </select>
       </div>
     </div>
@@ -1153,6 +1155,110 @@ async function render() {
           outCtx.fill();
         }
       }
+    } else if (type === 'ringDots') {
+      // Ring dots halftone — each cell is a donut (filled circle with BG-colored hole)
+      outCanvas.width = w;
+      outCanvas.height = h;
+      const outCtx = outCanvas.getContext('2d');
+      outCtx.fillStyle = `rgb(${c1.r},${c1.g},${c1.b})`;
+      outCtx.fillRect(0, 0, w, h);
+
+      const cell   = 6;
+      const cellPx = cell * scale;
+      const maxR   = cellPx * 0.52;
+      const holeRatio = 0.42; // inner hole as fraction of outer radius
+
+      const cols = Math.ceil(dw / cell);
+      const rows = Math.ceil(dh / cell);
+
+      for (let cy = 0; cy < rows; cy++) {
+        for (let cx = 0; cx < cols; cx++) {
+          let sum = 0, cnt = 0;
+          for (let dy = 0; dy < cell; dy++) {
+            for (let dx = 0; dx < cell; dx++) {
+              const px = cx * cell + dx, py = cy * cell + dy;
+              if (px < dw && py < dh) { sum += gray[py * dw + px]; cnt++; }
+            }
+          }
+          if (!cnt) continue;
+
+          const t = (255 - sum / cnt) / 255;
+          const outerR = Math.sqrt(t) * maxR;
+          if (outerR < 0.5) continue;
+          const innerR = outerR * holeRatio;
+
+          const pcx = (cx * cell + cell / 2) * scale;
+          const pcy = (cy * cell + cell / 2) * scale;
+
+          // Outer filled circle (FG color)
+          outCtx.beginPath();
+          outCtx.arc(pcx, pcy, outerR, 0, Math.PI * 2);
+          outCtx.fillStyle = `rgb(${c2.r},${c2.g},${c2.b})`;
+          outCtx.fill();
+
+          // Inner hole punched back to BG color
+          outCtx.beginPath();
+          outCtx.arc(pcx, pcy, innerR, 0, Math.PI * 2);
+          outCtx.fillStyle = `rgb(${c1.r},${c1.g},${c1.b})`;
+          outCtx.fill();
+        }
+      }
+    } else if (type === 'dotScatter') {
+      // Holographic dot scatter — variable-size crisp dots with soft glow
+      outCanvas.width = w;
+      outCanvas.height = h;
+      const outCtx = outCanvas.getContext('2d');
+      outCtx.fillStyle = `rgb(${c1.r},${c1.g},${c1.b})`;
+      outCtx.fillRect(0, 0, w, h);
+
+      const cell   = 8;
+      const cellPx = cell * scale;
+      const maxR   = cellPx * 0.58;
+
+      const cols = Math.ceil(dw / cell);
+      const rows = Math.ceil(dh / cell);
+
+      let rngSeed = 0xdeadcafe;
+      function lcg() { rngSeed = (rngSeed * 1664525 + 1013904223) >>> 0; return rngSeed / 0xffffffff; }
+
+      for (let cy = 0; cy < rows; cy++) {
+        for (let cx = 0; cx < cols; cx++) {
+          let sum = 0, cnt = 0;
+          for (let dy = 0; dy < cell; dy++) {
+            for (let dx = 0; dx < cell; dx++) {
+              const px = cx * cell + dx, py = cy * cell + dy;
+              if (px < dw && py < dh) { sum += gray[py * dw + px]; cnt++; }
+            }
+          }
+          if (!cnt) continue;
+
+          const t = (255 - sum / cnt) / 255;
+          const r = Math.pow(t, 0.65) * maxR;
+          if (r < 0.5) continue;
+
+          // Scatter more in darker regions
+          const scatterAmt = cellPx * 0.2 * t;
+          const ox = (lcg() - 0.5) * scatterAmt;
+          const oy = (lcg() - 0.5) * scatterAmt;
+          const pcx = (cx * cell + cell / 2) * scale + ox;
+          const pcy = (cy * cell + cell / 2) * scale + oy;
+
+          // Solid core
+          outCtx.beginPath();
+          outCtx.arc(pcx, pcy, r, 0, Math.PI * 2);
+          outCtx.fillStyle = `rgb(${c2.r},${c2.g},${c2.b})`;
+          outCtx.fill();
+
+          // Soft outer glow halo
+          const grad = outCtx.createRadialGradient(pcx, pcy, r * 0.8, pcx, pcy, r * 2.2);
+          grad.addColorStop(0, `rgba(${c2.r},${c2.g},${c2.b},0.25)`);
+          grad.addColorStop(1, `rgba(${c2.r},${c2.g},${c2.b},0)`);
+          outCtx.beginPath();
+          outCtx.arc(pcx, pcy, r * 2.2, 0, Math.PI * 2);
+          outCtx.fillStyle = grad;
+          outCtx.fill();
+        }
+      }
     } else {
       const result = applyDither(type, gray, dw, dh, thr);
 
@@ -1434,13 +1540,15 @@ function openParticleView() {
 
   const pixelScale      = parseInt(document.getElementById('scale').value) || 1;
   const isHalftoneSmooth = ditherType.value === 'halftoneSmooth';
+  const isDotScatter     = ditherType.value === 'dotScatter';
+  const isRingDots       = ditherType.value === 'ringDots';
 
   let sw, sh, sData;
 
-  if (isHalftoneSmooth) {
-    // Halftone smooth: one particle per circle center (cell = 4 dither pixels)
-    // Sample outCanvas at cell-center positions so we hit inside each circle, not its corner
-    const cellPx = 4 * pixelScale; // output pixels per halftone cell
+  if (isHalftoneSmooth || isDotScatter || isRingDots) {
+    // Cell-based halftone: one particle per circle center
+    const cellSize = isDotScatter ? 8 : isRingDots ? 6 : 4;
+    const cellPx = cellSize * pixelScale; // output pixels per halftone cell
     sw = Math.max(1, Math.ceil(W / cellPx));
     sh = Math.max(1, Math.ceil(H / cellPx));
     const fullData = outCanvas.getContext('2d').getImageData(0, 0, W, H).data;
