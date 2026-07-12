@@ -1553,9 +1553,11 @@ function openParticleView() {
     sh = Math.max(1, Math.ceil(H / cellPx));
     const fullData = outCanvas.getContext('2d').getImageData(0, 0, W, H).data;
     sData = new Uint8ClampedArray(sw * sh * 4);
+    // ringDots: center of each cell is the BG-colored hole — sample in the ring band instead
+    const sampleOffX = isRingDots ? Math.round(cellPx * 0.37) : 0;
     for (let cy = 0; cy < sh; cy++) {
       for (let cx = 0; cx < sw; cx++) {
-        const ox = Math.min(W - 1, Math.round(cx * cellPx + cellPx / 2));
+        const ox = Math.min(W - 1, Math.round(cx * cellPx + cellPx / 2 + sampleOffX));
         const oy = Math.min(H - 1, Math.round(cy * cellPx + cellPx / 2));
         const oi = (oy * W + ox) * 4;
         const si = (cy * sw + cx) * 4;
@@ -1757,7 +1759,10 @@ function openParticleView() {
   sizeSlider.value = Math.min(parseFloat(sizeSlider.max), Math.max(parseFloat(sizeSlider.min), autoSize));
   document.getElementById('p3dSizeVal').textContent = parseFloat(sizeSlider.value).toFixed(3);
 
-  // Slider live-update
+  // Slider live-update — use AbortController so listeners are cleaned up on close
+  const uiAbort = new AbortController();
+  const uiSig   = uiAbort.signal;
+
   const radiusSlider = document.getElementById('p3dRadius');
   const forceSlider  = document.getElementById('p3dForce');
   const depthSlider  = document.getElementById('p3dDepth');
@@ -1765,16 +1770,16 @@ function openParticleView() {
   sizeSlider.addEventListener('input', () => {
     material.uniforms.uSize.value = parseFloat(sizeSlider.value);
     document.getElementById('p3dSizeVal').textContent = sizeSlider.value;
-  });
+  }, { signal: uiSig });
   radiusSlider.addEventListener('input', () => {
     document.getElementById('p3dRadiusVal').textContent = radiusSlider.value;
-  });
+  }, { signal: uiSig });
   forceSlider.addEventListener('input', () => {
     document.getElementById('p3dForceVal').textContent = parseFloat(forceSlider.value).toFixed(2);
-  });
+  }, { signal: uiSig });
   depthSlider.addEventListener('input', () => {
     document.getElementById('p3dDepthVal').textContent = depthSlider.value;
-  });
+  }, { signal: uiSig });
 
   // Set Z + sphere uniforms based on shape
   function updateZUniforms() {
@@ -1801,7 +1806,7 @@ function openParticleView() {
       morphPos.set(shape === 'sphere' ? spherePos : flatPos);
       morphProgress = 0;
       updateZUniforms();
-    });
+    }, { signal: uiSig });
   });
 
   // Physics loop
@@ -1862,7 +1867,7 @@ function openParticleView() {
   window.addEventListener('resize', onResize);
 
   p3d = {
-    renderer, animId, onMouseMove, onResize,
+    renderer, animId, onMouseMove, onResize, uiAbort,
     spherePos, flatPos, count, fgHex: partHex, bgHex: bgHex2, sphereR,
     currentShape: () => currentShape,
     pSize: parseFloat(document.getElementById('p3dSize').value),
@@ -1877,6 +1882,7 @@ function closeParticleView() {
   cancelAnimationFrame(p3d.animId);
   document.getElementById('particle-canvas').removeEventListener('mousemove', p3d.onMouseMove);
   window.removeEventListener('resize', p3d.onResize);
+  p3d.uiAbort.abort();
   p3d.renderer.dispose();
   p3d = null;
 }
