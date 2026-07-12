@@ -1613,6 +1613,31 @@ function openParticleView() {
     useXY = sub;
   }
 
+  // For halftone modes: pre-compute per-cell luminance so particles vary in size
+  // matching the dot-size curve used in the 2D render (dark → big, bright → small)
+  const isHalftoneBased = isHalftoneSmooth || isDotScatter || isRingDots;
+  let lumArray = null;
+  if (isHalftoneBased && sourceImage) {
+    const lumOff = document.createElement('canvas');
+    lumOff.width = sw; lumOff.height = sh;
+    const lumCtx = lumOff.getContext('2d');
+    lumCtx.drawImage(sourceImage, 0, 0, sw, sh);
+    const lumPx = lumCtx.getImageData(0, 0, sw, sh).data;
+    lumArray = new Float32Array(sw * sh);
+    const bri = parseInt(briSlider.value);
+    const con = parseInt(conSlider.value);
+    const inv = invertChk.checked;
+    const fac = (259 * (con + 255)) / (255 * (259 - con));
+    for (let i = 0; i < sw * sh; i++) {
+      let r = lumPx[i*4] + bri, g = lumPx[i*4+1] + bri, b = lumPx[i*4+2] + bri;
+      r = Math.max(0, Math.min(255, fac * (r - 128) + 128));
+      g = Math.max(0, Math.min(255, fac * (g - 128) + 128));
+      b = Math.max(0, Math.min(255, fac * (b - 128) + 128));
+      if (inv) { r = 255-r; g = 255-g; b = 255-b; }
+      lumArray[i] = 0.299*r + 0.587*g + 0.114*b;
+    }
+  }
+
   // Double count: front + back hemisphere for sphere mode
   const countFG    = useXY.length;
   const count      = countFG * 2;
@@ -1623,6 +1648,7 @@ function openParticleView() {
   const morphPos   = new Float32Array(count * 3);
   const velocities = new Float32Array(count * 3);
   const pColors    = new Float32Array(count * 3);
+  const sizeAttr   = new Float32Array(count);
 
   const partRGB = hexToRgb(partHex);
   const fgR = partRGB.r / 255, fgG = partRGB.g / 255, fgB = partRGB.b / 255;
@@ -1635,6 +1661,12 @@ function openParticleView() {
     const y   = -(py / sh - 0.5) * worldH;
     flatPos[i*3]   = x; flatPos[i*3+1] = y; flatPos[i*3+2] = 0;
     flatPos[(i+countFG)*3]   = x; flatPos[(i+countFG)*3+1] = y; flatPos[(i+countFG)*3+2] = 0;
+    // Per-particle size: replicate the halftone dot-size curve so 3D matches 2D
+    const sz = lumArray
+      ? Math.max(0.12, Math.pow((255 - lumArray[idx]) / 255, 0.65))
+      : 1.0;
+    sizeAttr[i] = sz;
+    sizeAttr[i + countFG] = sz;
   }
 
   // Sphere positions: centroid + radius from particle pixels
@@ -1692,9 +1724,11 @@ function openParticleView() {
   posAttr.setUsage(THREE.DynamicDrawUsage);
   geometry.setAttribute('position', posAttr);
   geometry.setAttribute('color', new THREE.BufferAttribute(pColors, 3));
+  geometry.setAttribute('aSize', new THREE.BufferAttribute(sizeAttr, 1));
 
   const VERT = `
-    attribute vec3 color;
+    attribute vec3  color;
+    attribute float aSize;
     varying vec3  vColor;
     varying float vAlpha;
     uniform float uSize, uZMin, uZMax, uViewH, uSphere;
@@ -1709,7 +1743,7 @@ function openParticleView() {
       vAlpha = mix(alphaFlat, alphaSphere, uSphere);
       vec4 mv = modelViewMatrix * vec4(position, 1.0);
       gl_Position  = projectionMatrix * mv;
-      gl_PointSize = uSize * (uViewH * 0.5) / -mv.z;
+      gl_PointSize = uSize * aSize * (uViewH * 0.5) / -mv.z;
     }
   `;
   const FRAG = `
