@@ -1592,19 +1592,17 @@ function openParticleView() {
   const cameraZ_w = worldH * imageAspect / (2 * Math.tan(fovRad / 2) * screenAspect);
   const cameraZ   = Math.max(cameraZ_h, cameraZ_w);
 
-  // Collect both pixel sets
-  const fgXY = [], bgXY = [];
+  // Collect FG (dot) pixels — always use these as particles regardless of count
+  const fgXY = [];
   for (let i = 0; i < sw * sh; i++) {
     const r = sData[i*4], g = sData[i*4+1], b = sData[i*4+2];
     const dFG = Math.abs(r-fg.r) + Math.abs(g-fg.g) + Math.abs(b-fg.b);
     const dBG = Math.abs(r-bg.r) + Math.abs(g-bg.g) + Math.abs(b-bg.b);
-    if (dFG <= dBG) fgXY.push(i); else bgXY.push(i);
+    if (dFG <= dBG) fgXY.push(i);
   }
-  // Fewer pixels = the dot/pattern; more pixels = background fill
-  const useFG   = fgXY.length <= bgXY.length;
-  let   useXY   = useFG ? fgXY : bgXY;
-  const partHex = useFG ? fgHex : color1In.value;
-  const bgHex2  = useFG ? color1In.value : fgHex;
+  let   useXY   = fgXY;
+  const partHex = fgHex;
+  const bgHex2  = color1In.value;
 
   // Cap at 200k; subsample evenly to keep pattern density uniform
   const MAX_P = 200000;
