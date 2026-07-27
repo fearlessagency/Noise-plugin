@@ -101,6 +101,35 @@
   }
 
   .layer-item:hover { background: var(--surface2); }
+  .layer-item.selected { background: var(--surface2); border-color: var(--border); }
+  .layer-item.selected .layer-name { color: var(--accent); }
+  .layer-item.drag-over { outline: 1px solid var(--accent); outline-offset: -2px; border-radius: 6px; }
+  .layer-item.dragging { opacity: 0.35; }
+
+  .layer-del {
+    width: 16px; height: 16px;
+    display: flex; align-items: center; justify-content: center;
+    background: transparent; border: none;
+    color: var(--muted); cursor: pointer;
+    font-size: 16px; line-height: 1;
+    opacity: 0; transition: opacity 0.1s, color 0.1s;
+    flex-shrink: 0; padding: 0;
+  }
+  .layer-item:hover .layer-del { opacity: 1; }
+  .layer-del:hover { color: var(--text); }
+
+  .add-layer-btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 9px 12px;
+    border: none; border-top: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted); cursor: pointer;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+    width: 100%; text-align: left;
+    transition: color 0.1s, background 0.1s;
+    flex-shrink: 0;
+  }
+  .add-layer-btn:hover { color: var(--accent); background: rgba(126,236,212,0.04); }
 
   .layer-eye {
     width: 22px; height: 22px;
@@ -817,27 +846,11 @@
   <!-- LEFT LAYERS PANEL -->
   <aside class="panel-left">
     <div class="panel-header">Layers</div>
-    <div class="layers-list" id="layersList">
-
-      <div class="layer-item" id="layerNoise">
-        <button class="layer-eye" id="eyeNoise" title="Toggle visibility">
-          <svg id="eyeNoiseOpen" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-          <svg id="eyeNoiseClosed" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-        </button>
-        <div class="layer-thumb layer-thumb-noise"></div>
-        <span class="layer-name">Noise</span>
-      </div>
-
-      <div class="layer-item" id="layerBg">
-        <button class="layer-eye" id="eyeBg" title="Toggle visibility">
-          <svg id="eyeBgOpen" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-          <svg id="eyeBgClosed" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-        </button>
-        <div class="layer-thumb" id="bgLayerThumb" style="background:#7eecd4"></div>
-        <span class="layer-name">Background</span>
-      </div>
-
-    </div>
+    <div class="layers-list" id="layersList"></div>
+    <button class="add-layer-btn" id="addLayerBtn">
+      <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+      Add Effect
+    </button>
   </aside>
 
   <!-- CANVAS AREA -->
@@ -907,99 +920,108 @@
       </div>
     </div>
 
-    <!-- Dither Type -->
-    <div>
-      <div class="section-label">Noise Type</div>
-      <div class="control">
-        <select id="ditherType">
-          <option value="bayer2">Ordered — Bayer 2×2</option>
-          <option value="bayer4" selected>Ordered — Bayer 4×4</option>
-          <option value="bayer8">Ordered — Bayer 8×8</option>
-          <option value="floydSteinberg">Error Diffusion — Floyd-Steinberg</option>
-          <option value="atkinson">Error Diffusion — Atkinson</option>
-          <option value="jarvis">Error Diffusion — Jarvis-Judice-Ninke</option>
-          <option value="stucki">Error Diffusion — Stucki</option>
-          <option value="random">Noise — Random Threshold</option>
-          <option value="blueNoise">Noise — Blue Noise</option>
-          <option value="halftone">Halftone — Circular</option>
-          <option value="halftoneSmooth">Halftone — Smooth Gradient</option>
-          <option value="dotScatter">Halftone — Dot Scatter</option>
-          <option value="ringDots">Halftone — Ring Dots</option>
-        </select>
-      </div>
-    </div>
+    <!-- Effect-only settings (hidden when BG layer selected) -->
+    <div id="effectOnlySettings">
 
-    <!-- Settings -->
-    <div>
-      <div class="section-label">Settings</div>
-
-      <div class="control">
-        <div class="control-row">
-          <label>Pixel Scale</label>
-          <input type="number" class="value-input" id="scaleVal" value="1" min="1" max="12" step="1">
+      <!-- Dither Type -->
+      <div>
+        <div class="section-label">Noise Type</div>
+        <div class="control">
+          <select id="ditherType">
+            <option value="bayer2">Ordered — Bayer 2×2</option>
+            <option value="bayer4" selected>Ordered — Bayer 4×4</option>
+            <option value="bayer8">Ordered — Bayer 8×8</option>
+            <option value="floydSteinberg">Error Diffusion — Floyd-Steinberg</option>
+            <option value="atkinson">Error Diffusion — Atkinson</option>
+            <option value="jarvis">Error Diffusion — Jarvis-Judice-Ninke</option>
+            <option value="stucki">Error Diffusion — Stucki</option>
+            <option value="random">Noise — Random Threshold</option>
+            <option value="blueNoise">Noise — Blue Noise</option>
+            <option value="halftone">Halftone — Circular</option>
+            <option value="halftoneSmooth">Halftone — Smooth Gradient</option>
+            <option value="dotScatter">Halftone — Dot Scatter</option>
+            <option value="ringDots">Halftone — Ring Dots</option>
+          </select>
         </div>
-        <input type="range" id="scale" min="1" max="12" value="1" step="1">
       </div>
 
-      <div class="control" style="margin-top:12px">
-        <div class="control-row">
-          <label>Threshold</label>
-          <input type="number" class="value-input" id="thresholdVal" value="128" min="0" max="255" step="1">
-        </div>
-        <input type="range" id="threshold" min="0" max="255" value="128" step="1">
-      </div>
+      <!-- Settings -->
+      <div>
+        <div class="section-label">Settings</div>
 
-      <div class="control" style="margin-top:12px">
-        <div class="control-row">
-          <label>Brightness</label>
-          <input type="number" class="value-input" id="brightnessVal" value="0" min="-100" max="100" step="1">
-        </div>
-        <input type="range" id="brightness" min="-100" max="100" value="0" step="1">
-      </div>
-
-      <div class="control" style="margin-top:12px">
-        <div class="control-row">
-          <label>Contrast</label>
-          <input type="number" class="value-input" id="contrastVal" value="0" min="-100" max="100" step="1">
-        </div>
-        <input type="range" id="contrast" min="-100" max="100" value="0" step="1">
-      </div>
-
-      <div class="toggle-row" style="margin-top:12px">
-        <label>Invert Colors</label>
-        <label class="toggle">
-          <input type="checkbox" id="invert">
-          <span class="toggle-slider"></span>
-        </label>
-      </div>
-    </div>
-
-    <!-- Colors -->
-    <div>
-      <div class="section-label">Colors</div>
-      <div class="palette-grid">
-        <div class="color-item">
-          <label>Light / BG</label>
-          <div class="color-row">
-            <div class="color-swatch" id="color1Swatch" style="background:#7eecd4" title="Open color picker">
-              <input type="color" id="color1" value="#7eecd4">
-            </div>
-            <input type="text" class="color-hex-input" id="color1Hex" value="#7eecd4" maxlength="7" spellcheck="false" placeholder="#000000">
+        <div class="control">
+          <div class="control-row">
+            <label>Pixel Scale</label>
+            <input type="number" class="value-input" id="scaleVal" value="1" min="1" max="12" step="1">
           </div>
+          <input type="range" id="scale" min="1" max="12" value="1" step="1">
         </div>
-        <div class="color-item">
-          <label>Dark / FG</label>
-          <div class="color-row">
-            <div class="color-swatch" id="color2Swatch" style="background:#a07cf0" title="Open color picker">
-              <input type="color" id="color2" value="#a07cf0">
-            </div>
-            <input type="text" class="color-hex-input" id="color2Hex" value="#a07cf0" maxlength="7" spellcheck="false" placeholder="#000000">
+
+        <div class="control" style="margin-top:12px">
+          <div class="control-row">
+            <label>Threshold</label>
+            <input type="number" class="value-input" id="thresholdVal" value="128" min="0" max="255" step="1">
           </div>
+          <input type="range" id="threshold" min="0" max="255" value="128" step="1">
         </div>
+
+        <div class="control" style="margin-top:12px">
+          <div class="control-row">
+            <label>Brightness</label>
+            <input type="number" class="value-input" id="brightnessVal" value="0" min="-100" max="100" step="1">
+          </div>
+          <input type="range" id="brightness" min="-100" max="100" value="0" step="1">
+        </div>
+
+        <div class="control" style="margin-top:12px">
+          <div class="control-row">
+            <label>Contrast</label>
+            <input type="number" class="value-input" id="contrastVal" value="0" min="-100" max="100" step="1">
+          </div>
+          <input type="range" id="contrast" min="-100" max="100" value="0" step="1">
+        </div>
+
+        <div class="toggle-row" style="margin-top:12px">
+          <label>Invert</label>
+          <label class="toggle">
+            <input type="checkbox" id="invert">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Dot Color + Opacity -->
+      <div>
+        <div class="section-label">Dot Color</div>
+        <div class="color-row">
+          <div class="color-swatch" id="color2Swatch" style="background:#a07cf0" title="Open color picker">
+            <input type="color" id="color2" value="#a07cf0">
+          </div>
+          <input type="text" class="color-hex-input" id="color2Hex" value="#a07cf0" maxlength="7" spellcheck="false" placeholder="#000000">
+        </div>
+        <div class="control" style="margin-top:12px">
+          <div class="control-row">
+            <label>Opacity</label>
+            <input type="number" class="value-input" id="opacityVal" value="100" min="0" max="100" step="1">
+          </div>
+          <input type="range" id="opacity" min="0" max="100" value="100" step="1">
+        </div>
+      </div>
+
+    </div><!-- /effectOnlySettings -->
+
+    <!-- BG color (shown when BG layer selected) -->
+    <div id="bgOnlySettings" style="display:none">
+      <div class="section-label">Background Color</div>
+      <div class="color-row">
+        <div class="color-swatch" id="color1Swatch" style="background:#7eecd4" title="Open color picker">
+          <input type="color" id="color1" value="#7eecd4">
+        </div>
+        <input type="text" class="color-hex-input" id="color1Hex" value="#7eecd4" maxlength="7" spellcheck="false" placeholder="#000000">
       </div>
     </div>
 
-    <!-- Palette Presets -->
+    <!-- Palette Presets (sets BG + dot color) -->
     <div>
       <div class="section-label">Palette Presets</div>
       <div class="preset-list" id="presetList"></div>
@@ -1090,10 +1112,38 @@ let currentView = 'output';
 let processing = false;
 let pendingRender = false;
 let renderTimeout = null;
-let bgVisible = true;
-let noiseVisible = true;
 let zoomLevel = 1;
 const ZOOM_STEPS = [0.25, 0.33, 0.5, 0.67, 0.75, 1, 1.25, 1.5, 2, 3, 4];
+
+// ── Layer system ──
+let layers = [];
+let selectedLayerId = null;
+let _layerCnt = 0;
+
+function makeBgLayer(color = '#0e0e10') {
+  return { id: 'bg', name: 'Background', type: 'bg', color, visible: true };
+}
+function makeEffectLayer() {
+  _layerCnt++;
+  return {
+    id: 'eff_' + _layerCnt,
+    name: 'Effect ' + _layerCnt,
+    type: 'effect',
+    ditherType: 'bayer4',
+    scale: 1,
+    threshold: 128,
+    brightness: 0,
+    contrast: 0,
+    invert: false,
+    color: '#ffffff',
+    opacity: 100,
+    visible: true,
+  };
+}
+function selectedEffLayer() {
+  const l = layers.find(l => l.id === selectedLayerId);
+  return (l && l.type === 'effect') ? l : null;
+}
 
 const MAX_DIM = 1200;
 
@@ -1148,31 +1198,45 @@ const thrValEl   = document.getElementById('thresholdVal');
 const briValEl   = document.getElementById('brightnessVal');
 const conValEl   = document.getElementById('contrastVal');
 
-scaleSlider.addEventListener('input',  () => { scaleValEl.value = scaleSlider.value; scheduleRender(); });
-thrSlider.addEventListener('input',    () => { thrValEl.value   = thrSlider.value;   scheduleRender(); });
-briSlider.addEventListener('input',    () => { briValEl.value   = briSlider.value;   scheduleRender(); });
-conSlider.addEventListener('input',    () => { conValEl.value   = conSlider.value;   scheduleRender(); });
+scaleSlider.addEventListener('input',  () => { scaleValEl.value = scaleSlider.value; const l=selectedEffLayer(); if(l){l.scale=parseInt(scaleSlider.value);} scheduleRender(); });
+thrSlider.addEventListener('input',    () => { thrValEl.value   = thrSlider.value;   const l=selectedEffLayer(); if(l){l.threshold=parseInt(thrSlider.value);} scheduleRender(); });
+briSlider.addEventListener('input',    () => { briValEl.value   = briSlider.value;   const l=selectedEffLayer(); if(l){l.brightness=parseInt(briSlider.value);} scheduleRender(); });
+conSlider.addEventListener('input',    () => { conValEl.value   = conSlider.value;   const l=selectedEffLayer(); if(l){l.contrast=parseInt(conSlider.value);} scheduleRender(); });
 scaleSlider.addEventListener('change', captureHistory);
 thrSlider.addEventListener('change',   captureHistory);
 briSlider.addEventListener('change',   captureHistory);
 conSlider.addEventListener('change',   captureHistory);
 
-function clampSync(input, slider) {
+const opacitySlider = document.getElementById('opacity');
+const opacityValEl  = document.getElementById('opacityVal');
+opacitySlider.addEventListener('input', () => {
+  opacityValEl.value = opacitySlider.value;
+  const l = selectedEffLayer(); if (l) l.opacity = parseInt(opacitySlider.value);
+  scheduleRender();
+});
+opacitySlider.addEventListener('change', captureHistory);
+opacityValEl.addEventListener('change', () => {
+  let v = Math.max(0, Math.min(100, parseInt(opacityValEl.value) || 0));
+  opacityValEl.value = v; opacitySlider.value = v;
+  const l = selectedEffLayer(); if (l) l.opacity = v;
+  scheduleRender(); captureHistory();
+});
+
+function clampSync(input, slider, layerProp) {
   let v = parseInt(input.value);
   if (isNaN(v)) v = parseInt(slider.value);
   v = Math.max(parseInt(slider.min), Math.min(parseInt(slider.max), v));
-  input.value = v;
-  slider.value = v;
-  scheduleRender();
-  captureHistory();
+  input.value = v; slider.value = v;
+  if (layerProp) { const l = selectedEffLayer(); if (l) l[layerProp] = v; }
+  scheduleRender(); captureHistory();
 }
 
-scaleValEl.addEventListener('change', () => clampSync(scaleValEl, scaleSlider));
-thrValEl.addEventListener('change',   () => clampSync(thrValEl, thrSlider));
-briValEl.addEventListener('change',   () => clampSync(briValEl, briSlider));
-conValEl.addEventListener('change',   () => clampSync(conValEl, conSlider));
-invertChk.addEventListener('change', () => { scheduleRender(true); captureHistory(); });
-ditherType.addEventListener('change', () => { scheduleRender(true); captureHistory(); });
+scaleValEl.addEventListener('change', () => clampSync(scaleValEl, scaleSlider, 'scale'));
+thrValEl.addEventListener('change',   () => clampSync(thrValEl, thrSlider, 'threshold'));
+briValEl.addEventListener('change',   () => clampSync(briValEl, briSlider, 'brightness'));
+conValEl.addEventListener('change',   () => clampSync(conValEl, conSlider, 'contrast'));
+invertChk.addEventListener('change', () => { const l=selectedEffLayer(); if(l) l.invert=invertChk.checked; scheduleRender(true); captureHistory(); });
+ditherType.addEventListener('change', () => { const l=selectedEffLayer(); if(l) l.ditherType=ditherType.value; scheduleRender(true); captureHistory(); });
 
 // ──────────────────────────────────────────────
 // Color pickers
@@ -1185,18 +1249,22 @@ function clearPresetSelection() {
 
 function applyColor(which, hex, fromPreset = false) {
   if (which === 1) {
-    color1In.value = hex;
-    color1Hex.value = hex;
-    color1Swatch.style.background = hex;
-    const bgThumb = document.getElementById('bgLayerThumb');
-    if (bgThumb) bgThumb.style.background = hex;
+    color1In.value = hex; color1Hex.value = hex; color1Swatch.style.background = hex;
+    const bgLayer = layers.find(l => l.type === 'bg');
+    if (bgLayer) { bgLayer.color = hex; refreshLayerThumb('bg'); }
   } else {
-    color2In.value = hex;
-    color2Hex.value = hex;
-    color2Swatch.style.background = hex;
+    color2In.value = hex; color2Hex.value = hex; color2Swatch.style.background = hex;
+    const effLayer = selectedEffLayer();
+    if (effLayer) { effLayer.color = hex; refreshLayerThumb(effLayer.id); }
   }
   if (!fromPreset) clearPresetSelection();
   scheduleRender(true);
+}
+function refreshLayerThumb(id) {
+  const el = document.querySelector(`.layer-item[data-lid="${id}"] .layer-thumb`);
+  if (!el) return;
+  const layer = layers.find(l => l.id === id);
+  if (layer) el.style.background = layer.color;
 }
 
 // Native color picker → update hex text + swatch instantly
@@ -1236,6 +1304,10 @@ function buildPresets() {
     el.addEventListener('click', () => {
       document.querySelectorAll('.preset').forEach(x => x.classList.remove('active'));
       el.classList.add('active');
+      const bg = layers.find(l => l.type === 'bg');
+      if (bg) { bg.color = p.c1; refreshLayerThumb('bg'); }
+      const eff = selectedEffLayer();
+      if (eff) { eff.color = p.c2; refreshLayerThumb(eff.id); }
       applyColor(1, p.c1, true);
       applyColor(2, p.c2, true);
     });
@@ -1267,8 +1339,18 @@ function loadFile(file) {
   img.onload = () => {
     sourceImage = img;
     URL.revokeObjectURL(url);
+    // Init layer system on first load
+    _layerCnt = 0;
+    const bgColor  = color1In.value || '#0e0e10';
+    const effColor = color2In.value || '#ffffff';
+    const eff = makeEffectLayer();
+    eff.color = effColor;
+    layers = [makeBgLayer(bgColor), eff];
+    selectedLayerId = eff.id;
     drawOriginal();
-    render();
+    buildLayersPanel();
+    updateRightPanel();
+    renderAll();
     emptyState.style.display = 'none';
     ccont.style.display = 'block';
     downloadBtn.disabled = false;
@@ -1286,24 +1368,31 @@ function loadFile(file) {
 // ──────────────────────────────────────────────
 function drawOriginal() {
   if (!sourceImage) return;
-  const { w, h } = getDims();
-  origCanvas.width = w;
-  origCanvas.height = h;
-  const ctx = origCanvas.getContext('2d');
-  ctx.drawImage(sourceImage, 0, 0, w, h);
-  singCanvas.width = w;
-  singCanvas.height = h;
+  const { w, h } = getCanvasSize();
+  origCanvas.width = w; origCanvas.height = h;
+  origCanvas.getContext('2d').drawImage(sourceImage, 0, 0, w, h);
+  singCanvas.width = w; singCanvas.height = h;
 }
 
-function getDims() {
-  const scale = parseInt(scaleSlider.value);
+function getCanvasSize() {
   let w = sourceImage.naturalWidth;
   let h = sourceImage.naturalHeight;
   if (w > MAX_DIM || h > MAX_DIM) {
     const r = Math.min(MAX_DIM / w, MAX_DIM / h);
-    w = Math.round(w * r);
-    h = Math.round(h * r);
+    w = Math.round(w * r); h = Math.round(h * r);
   }
+  return { w, h };
+}
+function getDims() {
+  const { w, h } = getCanvasSize();
+  const scale = parseInt(scaleSlider.value);
+  const dw = Math.max(1, Math.round(w / scale));
+  const dh = Math.max(1, Math.round(h / scale));
+  return { w, h, dw, dh, scale };
+}
+function getLayerDims(layer) {
+  const { w, h } = getCanvasSize();
+  const scale = layer.scale || 1;
   const dw = Math.max(1, Math.round(w / scale));
   const dh = Math.max(1, Math.round(h / scale));
   return { w, h, dw, dh, scale };
@@ -1332,18 +1421,143 @@ function applyView() {
 // Render
 // ──────────────────────────────────────────────
 function scheduleRender(immediate = false) {
-  if (processing) {
-    pendingRender = true;
-    return;
-  }
+  if (processing) { pendingRender = true; return; }
   clearTimeout(renderTimeout);
-  if (immediate) {
-    render();
+  if (immediate) { renderAll(); } else { renderTimeout = setTimeout(renderAll, 30); }
+}
+
+// ── renderEffectLayerToCanvas: renders a single effect layer transparently ──
+async function renderEffectLayerToCanvas(layer) {
+  const { w, h, dw, dh, scale } = getLayerDims(layer);
+  const fgRgb = hexToRgb(layer.color);
+
+  const off = document.createElement('canvas');
+  off.width = dw; off.height = dh;
+  const octx = off.getContext('2d');
+  octx.drawImage(sourceImage, 0, 0, dw, dh);
+  let imgData = octx.getImageData(0, 0, dw, dh);
+  applyAdjustments(imgData.data, layer.brightness, layer.contrast, layer.invert);
+  const gray = toGrayscaleArray(imgData.data, dw, dh);
+
+  const lc = document.createElement('canvas');
+  lc.width = w; lc.height = h;
+  const lCtx = lc.getContext('2d');
+
+  const type = layer.ditherType;
+
+  if (type === 'halftoneSmooth') {
+    lCtx.fillStyle = `rgb(${fgRgb.r},${fgRgb.g},${fgRgb.b})`;
+    const cell = 4, cellPx = cell * scale, maxR = cellPx * 0.58;
+    const cols = Math.ceil(dw/cell), rows = Math.ceil(dh/cell);
+    for (let cy=0;cy<rows;cy++) for (let cx=0;cx<cols;cx++) {
+      let sum=0,cnt=0;
+      for (let dy=0;dy<cell;dy++) for (let dx=0;dx<cell;dx++) {
+        const px=cx*cell+dx,py=cy*cell+dy;
+        if(px<dw&&py<dh){sum+=gray[py*dw+px];cnt++;}
+      }
+      if(!cnt) continue;
+      const r=Math.sqrt((255-sum/cnt)/255)*maxR;
+      if(r<0.4) continue;
+      lCtx.beginPath(); lCtx.arc((cx*cell+cell/2)*scale,(cy*cell+cell/2)*scale,r,0,Math.PI*2); lCtx.fill();
+    }
+  } else if (type === 'ringDots') {
+    const cell=6,cellPx=cell*scale,maxR=cellPx*0.52,holeRatio=0.42;
+    const cols=Math.ceil(dw/cell),rows=Math.ceil(dh/cell);
+    for (let cy=0;cy<rows;cy++) for (let cx=0;cx<cols;cx++) {
+      let sum=0,cnt=0;
+      for (let dy=0;dy<cell;dy++) for (let dx=0;dx<cell;dx++) {
+        const px=cx*cell+dx,py=cy*cell+dy;
+        if(px<dw&&py<dh){sum+=gray[py*dw+px];cnt++;}
+      }
+      if(!cnt) continue;
+      const outerR=Math.sqrt((255-sum/cnt)/255)*maxR;
+      if(outerR<0.5) continue;
+      const pcx=(cx*cell+cell/2)*scale,pcy=(cy*cell+cell/2)*scale;
+      lCtx.beginPath(); lCtx.arc(pcx,pcy,outerR,0,Math.PI*2);
+      lCtx.fillStyle=`rgb(${fgRgb.r},${fgRgb.g},${fgRgb.b})`; lCtx.fill();
+      lCtx.globalCompositeOperation='destination-out';
+      lCtx.beginPath(); lCtx.arc(pcx,pcy,outerR*holeRatio,0,Math.PI*2); lCtx.fill();
+      lCtx.globalCompositeOperation='source-over';
+    }
+  } else if (type === 'dotScatter') {
+    const cell=8,cellPx=cell*scale,maxR=cellPx*0.58;
+    const cols=Math.ceil(dw/cell),rows=Math.ceil(dh/cell);
+    let rngSeed=0xdeadcafe;
+    const lcg=()=>{rngSeed=(rngSeed*1664525+1013904223)>>>0;return rngSeed/0xffffffff;};
+    for (let cy=0;cy<rows;cy++) for (let cx=0;cx<cols;cx++) {
+      let sum=0,cnt=0;
+      for (let dy=0;dy<cell;dy++) for (let dx=0;dx<cell;dx++) {
+        const px=cx*cell+dx,py=cy*cell+dy;
+        if(px<dw&&py<dh){sum+=gray[py*dw+px];cnt++;}
+      }
+      if(!cnt) continue;
+      const t=(255-sum/cnt)/255;
+      const r=Math.pow(t,0.65)*maxR; if(r<0.5) continue;
+      const scatter=cellPx*0.2*t;
+      const pcx=(cx*cell+cell/2)*scale+(lcg()-0.5)*scatter;
+      const pcy=(cy*cell+cell/2)*scale+(lcg()-0.5)*scatter;
+      lCtx.beginPath(); lCtx.arc(pcx,pcy,r,0,Math.PI*2);
+      lCtx.fillStyle=`rgb(${fgRgb.r},${fgRgb.g},${fgRgb.b})`; lCtx.fill();
+      const grad=lCtx.createRadialGradient(pcx,pcy,r*0.8,pcx,pcy,r*2.2);
+      grad.addColorStop(0,`rgba(${fgRgb.r},${fgRgb.g},${fgRgb.b},0.25)`);
+      grad.addColorStop(1,`rgba(${fgRgb.r},${fgRgb.g},${fgRgb.b},0)`);
+      lCtx.beginPath(); lCtx.arc(pcx,pcy,r*2.2,0,Math.PI*2);
+      lCtx.fillStyle=grad; lCtx.fill();
+    }
   } else {
-    renderTimeout = setTimeout(render, 30);
+    const result = applyDither(type, gray, dw, dh, layer.threshold);
+    const outOff = document.createElement('canvas');
+    outOff.width=dw; outOff.height=dh;
+    const octx2=outOff.getContext('2d');
+    const outData=octx2.createImageData(dw,dh);
+    for (let i=0;i<result.length;i++) {
+      outData.data[i*4]=fgRgb.r; outData.data[i*4+1]=fgRgb.g;
+      outData.data[i*4+2]=fgRgb.b; outData.data[i*4+3]=result[i]?255:0;
+    }
+    octx2.putImageData(outData,0,0);
+    lCtx.imageSmoothingEnabled=false;
+    lCtx.drawImage(outOff,0,0,w,h);
+  }
+  return lc;
+}
+
+async function renderAll() {
+  if (!sourceImage) return;
+  pendingRender = false;
+  processing = true;
+  procEl.style.display = 'flex';
+  await new Promise(r => setTimeout(r, 0));
+  try {
+    const { w, h } = getCanvasSize();
+    outCanvas.width = w; outCanvas.height = h;
+    const mainCtx = outCanvas.getContext('2d');
+    mainCtx.clearRect(0, 0, w, h);
+
+    const bgLayer = layers.find(l => l.type === 'bg');
+    if (bgLayer && bgLayer.visible) {
+      mainCtx.fillStyle = bgLayer.color;
+      mainCtx.fillRect(0, 0, w, h);
+    }
+
+    const effLayers = layers.filter(l => l.type === 'effect');
+    for (const layer of effLayers) {
+      if (!layer.visible) continue;
+      const lc = await renderEffectLayerToCanvas(layer);
+      mainCtx.globalAlpha = layer.opacity / 100;
+      mainCtx.drawImage(lc, 0, 0);
+    }
+    mainCtx.globalAlpha = 1;
+
+    applyView();
+    updateZoom();
+  } finally {
+    processing = false;
+    procEl.style.display = 'none';
+    if (pendingRender) { pendingRender = false; setTimeout(renderAll, 40); }
   }
 }
 
+// kept for 3D particle backward-compat
 async function render() {
   if (!sourceImage) return;
   pendingRender = false;
@@ -1547,16 +1761,12 @@ async function render() {
       outCtx.drawImage(outOff, 0, 0, w, h);
     }
 
-    postProcessLayers(outCanvas, c1);
     applyView();
     updateZoom();
   } finally {
     processing = false;
     procEl.style.display = 'none';
-    if (pendingRender) {
-      pendingRender = false;
-      setTimeout(render, 40);
-    }
+    if (pendingRender) { pendingRender = false; setTimeout(renderAll, 40); }
   }
 }
 
@@ -1770,21 +1980,7 @@ downloadBtn.addEventListener('click', () => {
 });
 
 // ──────────────────────────────────────────────
-// Reset
-// ──────────────────────────────────────────────
-resetBtn.addEventListener('click', () => {
-  ditherType.value = 'bayer4';
-  scaleSlider.value = 1; scaleValEl.value = 1;
-  thrSlider.value = 128;  thrValEl.value = 128;
-  briSlider.value = 0;    briValEl.value = 0;
-  conSlider.value = 0;    conValEl.value = 0;
-  invertChk.checked = false;
-  applyColor(1, '#7eecd4');
-  applyColor(2, '#a07cf0');
-  document.querySelectorAll('.preset').forEach((el, i) => el.classList.toggle('active', i === 0));
-  scheduleRender();
-  captureHistory();
-});
+// Reset (handled in layer panel section above)
 
 // ──────────────────────────────────────────────
 // 3D Particle View
@@ -2190,32 +2386,27 @@ let applyingHistory = false;
 
 function captureHistory() {
   if (applyingHistory) return;
-  const state = getCurrentSettings();
-  if (historyIndex >= 0 && JSON.stringify(history[historyIndex]) === JSON.stringify(state)) return;
+  const snap = JSON.stringify({ layers, selectedLayerId });
+  if (historyIndex >= 0 && history[historyIndex] === snap) return;
   history = history.slice(0, historyIndex + 1);
-  history.push(state);
+  history.push(snap);
   if (history.length > MAX_HISTORY) history.shift();
   historyIndex = history.length - 1;
   updateHistoryBtns();
 }
 
-function undo() {
-  if (historyIndex <= 0) return;
-  historyIndex--;
+function restoreHistorySnap(snap) {
   applyingHistory = true;
-  applySettingsPreset(history[historyIndex]);
+  const { layers: l, selectedLayerId: sid } = JSON.parse(snap);
+  layers = l; selectedLayerId = sid;
+  if (!layers.find(x => x.id === selectedLayerId)) selectedLayerId = layers[layers.length - 1]?.id || null;
+  buildLayersPanel(); updateRightPanel(); scheduleRender(true);
   applyingHistory = false;
   updateHistoryBtns();
 }
 
-function redo() {
-  if (historyIndex >= history.length - 1) return;
-  historyIndex++;
-  applyingHistory = true;
-  applySettingsPreset(history[historyIndex]);
-  applyingHistory = false;
-  updateHistoryBtns();
-}
+function undo() { if (historyIndex <= 0) return; historyIndex--; restoreHistorySnap(history[historyIndex]); }
+function redo() { if (historyIndex >= history.length-1) return; historyIndex++; restoreHistorySnap(history[historyIndex]); }
 
 function updateHistoryBtns() {
   document.getElementById('undoBtn').disabled = historyIndex <= 0;
@@ -2233,47 +2424,125 @@ document.addEventListener('keydown', (e) => {
 });
 
 // ──────────────────────────────────────────────
-// Layer visibility post-processing
+// Layer panel — build, select, update
 // ──────────────────────────────────────────────
-function postProcessLayers(canvas, c1) {
-  if (bgVisible && noiseVisible) return;
-  const ctx = canvas.getContext('2d');
-  const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const d = imgData.data;
-  for (let i = 0; i < d.length; i += 4) {
-    const isBg = Math.abs(d[i] - c1.r) + Math.abs(d[i+1] - c1.g) + Math.abs(d[i+2] - c1.b) < 40;
-    if (isBg) {
-      d[i+3] = bgVisible ? 255 : 0;
-    } else {
-      if (!noiseVisible) {
-        d[i] = c1.r; d[i+1] = c1.g; d[i+2] = c1.b;
-        d[i+3] = bgVisible ? 255 : 0;
-      }
+const EYE_OPEN   = `<svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+const EYE_CLOSED = `<svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
+
+function buildLayersPanel() {
+  const list = document.getElementById('layersList');
+  list.innerHTML = '';
+  const display = [...layers].reverse();
+  let dragSrc = null;
+
+  for (const layer of display) {
+    const isSelected = layer.id === selectedLayerId;
+    const thumb = layer.type === 'bg'
+      ? `<div class="layer-thumb" style="background:${layer.color}"></div>`
+      : `<div class="layer-thumb layer-thumb-noise" style="background:${layer.color}22; border-color:${layer.color}44"></div>`;
+    const delBtn = layer.type === 'bg' ? ''
+      : `<button class="layer-del" title="Delete layer">×</button>`;
+
+    const el = document.createElement('div');
+    el.className = 'layer-item' + (isSelected ? ' selected' : '') + (layer.visible ? '' : ' layer-hidden');
+    el.setAttribute('data-lid', layer.id);
+    if (layer.type === 'effect') el.draggable = true;
+    el.innerHTML = `
+      <button class="layer-eye ${layer.visible ? '' : 'off'}" title="Toggle visibility">${layer.visible ? EYE_OPEN : EYE_CLOSED}</button>
+      ${thumb}
+      <span class="layer-name">${layer.name}</span>
+      ${delBtn}
+    `;
+
+    el.addEventListener('click', (e) => {
+      if (e.target.closest('.layer-eye') || e.target.closest('.layer-del')) return;
+      selectLayer(layer.id);
+    });
+    el.querySelector('.layer-eye').addEventListener('click', (e) => {
+      e.stopPropagation();
+      layer.visible = !layer.visible;
+      buildLayersPanel(); scheduleRender(true); captureHistory();
+    });
+    if (layer.type === 'effect') {
+      el.querySelector('.layer-del').addEventListener('click', (e) => {
+        e.stopPropagation(); deleteLayer(layer.id);
+      });
+      el.addEventListener('dragstart', () => { dragSrc = layer.id; el.classList.add('dragging'); });
+      el.addEventListener('dragend',   () => { el.classList.remove('dragging'); dragSrc = null; });
     }
+    el.addEventListener('dragover', (e) => { if (layer.type === 'effect') { e.preventDefault(); el.classList.add('drag-over'); } });
+    el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
+    el.addEventListener('drop', (e) => {
+      e.preventDefault(); el.classList.remove('drag-over');
+      if (!dragSrc || dragSrc === layer.id || layer.type === 'bg') return;
+      const si = layers.findIndex(l => l.id === dragSrc);
+      const ti = layers.findIndex(l => l.id === layer.id);
+      if (si === -1 || ti === -1) return;
+      const [moved] = layers.splice(si, 1);
+      layers.splice(layers.findIndex(l => l.id === layer.id), 0, moved);
+      buildLayersPanel(); scheduleRender(true); captureHistory();
+    });
+
+    list.appendChild(el);
   }
-  ctx.putImageData(imgData, 0, 0);
 }
 
-// ──────────────────────────────────────────────
-// Layer panel eye toggles
-// ──────────────────────────────────────────────
-function setLayerEye(id, openId, closedId, layerId, visible) {
-  document.getElementById(openId).style.display  = visible ? '' : 'none';
-  document.getElementById(closedId).style.display = visible ? 'none' : '';
-  document.getElementById(id).classList.toggle('off', !visible);
-  document.getElementById(layerId).classList.toggle('layer-hidden', !visible);
+function selectLayer(id) {
+  selectedLayerId = id;
+  buildLayersPanel();
+  updateRightPanel();
 }
 
-document.getElementById('eyeNoise').addEventListener('click', () => {
-  noiseVisible = !noiseVisible;
-  setLayerEye('eyeNoise', 'eyeNoiseOpen', 'eyeNoiseClosed', 'layerNoise', noiseVisible);
-  scheduleRender(true);
+function deleteLayer(id) {
+  if (id === 'bg') return;
+  const idx = layers.findIndex(l => l.id === id);
+  if (idx === -1) return;
+  layers.splice(idx, 1);
+  if (selectedLayerId === id) selectedLayerId = layers[layers.length - 1]?.id || null;
+  buildLayersPanel(); updateRightPanel(); scheduleRender(true); captureHistory();
+}
+
+function updateRightPanel() {
+  const layer = layers.find(l => l.id === selectedLayerId);
+  const effSettings = document.getElementById('effectOnlySettings');
+  const bgSettings  = document.getElementById('bgOnlySettings');
+
+  if (!layer || layer.type === 'bg') {
+    effSettings.style.display = 'none';
+    bgSettings.style.display  = '';
+    const bg = layer || layers.find(l => l.type === 'bg');
+    if (bg) { color1In.value = bg.color; color1Hex.value = bg.color; color1Swatch.style.background = bg.color; }
+  } else {
+    effSettings.style.display = '';
+    bgSettings.style.display  = 'none';
+    ditherType.value = layer.ditherType;
+    scaleSlider.value = layer.scale;    scaleValEl.value = layer.scale;
+    thrSlider.value   = layer.threshold; thrValEl.value  = layer.threshold;
+    briSlider.value   = layer.brightness; briValEl.value = layer.brightness;
+    conSlider.value   = layer.contrast;   conValEl.value = layer.contrast;
+    invertChk.checked = layer.invert;
+    opacitySlider.value = layer.opacity; opacityValEl.value = layer.opacity;
+    color2In.value = layer.color; color2Hex.value = layer.color; color2Swatch.style.background = layer.color;
+  }
+}
+
+document.getElementById('addLayerBtn').addEventListener('click', () => {
+  const newLayer = makeEffectLayer();
+  newLayer.color = color2In.value || '#ffffff';
+  layers.push(newLayer);
+  selectedLayerId = newLayer.id;
+  buildLayersPanel(); updateRightPanel(); scheduleRender(true); captureHistory();
 });
 
-document.getElementById('eyeBg').addEventListener('click', () => {
-  bgVisible = !bgVisible;
-  setLayerEye('eyeBg', 'eyeBgOpen', 'eyeBgClosed', 'layerBg', bgVisible);
-  scheduleRender(true);
+// reset also re-initialises layers
+resetBtn.addEventListener('click', () => {
+  if (sourceImage) {
+    _layerCnt = 0;
+    const eff = makeEffectLayer(); eff.color = '#a07cf0';
+    layers = [makeBgLayer('#7eecd4'), eff];
+    selectedLayerId = eff.id;
+    buildLayersPanel(); updateRightPanel(); scheduleRender(true); captureHistory();
+  }
 });
 
 // ──────────────────────────────────────────────
@@ -2311,28 +2580,27 @@ document.getElementById('canvasWrap').addEventListener('wheel', (e) => {
 let settingsPresets = JSON.parse(localStorage.getItem('noiseStudioPresets') || '[]');
 
 function getCurrentSettings() {
+  const eff = selectedEffLayer();
+  const bg  = layers.find(l => l.type === 'bg');
+  if (!eff) return null;
   return {
-    ditherType: ditherType.value,
-    scale: scaleSlider.value,
-    threshold: thrSlider.value,
-    brightness: briSlider.value,
-    contrast: conSlider.value,
-    invert: invertChk.checked,
-    color1: color1In.value,
-    color2: color2In.value,
+    ditherType: eff.ditherType, scale: eff.scale, threshold: eff.threshold,
+    brightness: eff.brightness, contrast: eff.contrast, invert: eff.invert,
+    opacity: eff.opacity, color1: bg ? bg.color : '#000000', color2: eff.color,
   };
 }
 
 function applySettingsPreset(s) {
-  ditherType.value  = s.ditherType;
-  scaleSlider.value = s.scale;   scaleValEl.value = s.scale;
-  thrSlider.value   = s.threshold; thrValEl.value = s.threshold;
-  briSlider.value   = s.brightness; briValEl.value = s.brightness;
-  conSlider.value   = s.contrast;   conValEl.value = s.contrast;
-  invertChk.checked = s.invert;
-  applyColor(1, s.color1);
-  applyColor(2, s.color2);
-  scheduleRender(true);
+  if (!s) return;
+  const eff = selectedEffLayer();
+  if (eff) {
+    eff.ditherType=s.ditherType; eff.scale=parseInt(s.scale); eff.threshold=parseInt(s.threshold);
+    eff.brightness=parseInt(s.brightness); eff.contrast=parseInt(s.contrast);
+    eff.invert=s.invert; eff.opacity=parseInt(s.opacity||100); eff.color=s.color2;
+  }
+  const bg = layers.find(l => l.type === 'bg');
+  if (bg) bg.color = s.color1;
+  updateRightPanel(); scheduleRender(true);
 }
 
 function saveSettingsPresetsToStorage() {
