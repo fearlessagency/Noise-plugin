@@ -60,11 +60,95 @@
     overflow: hidden;
   }
 
-  /* SIDEBAR */
-  .sidebar {
-    width: 280px;
+  /* PANELS */
+  .panel-left {
+    width: 200px;
     flex-shrink: 0;
     border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--surface);
+  }
+
+  .panel-header {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 10px 12px 8px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .layers-list {
+    display: flex;
+    flex-direction: column;
+    padding: 6px;
+    gap: 2px;
+    overflow-y: auto;
+  }
+
+  .layer-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    cursor: default;
+    border: 1px solid transparent;
+  }
+
+  .layer-item:hover { background: var(--surface2); }
+
+  .layer-eye {
+    width: 22px; height: 22px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    color: var(--muted);
+    transition: color 0.1s;
+    padding: 0;
+  }
+
+  .layer-eye:hover { color: var(--text); }
+  .layer-eye.off { color: var(--border); }
+
+  .layer-thumb {
+    width: 28px; height: 20px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: var(--surface2);
+  }
+
+  .layer-thumb-noise {
+    background-image:
+      linear-gradient(45deg, rgba(255,255,255,0.12) 25%, transparent 25%),
+      linear-gradient(-45deg, rgba(255,255,255,0.12) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, rgba(255,255,255,0.12) 75%),
+      linear-gradient(-45deg, transparent 75%, rgba(255,255,255,0.12) 75%);
+    background-size: 4px 4px;
+    background-position: 0 0, 0 2px, 2px -2px, -2px 0;
+    background-color: #141416;
+  }
+
+  .layer-name {
+    font-size: 12px;
+    color: var(--text);
+    flex: 1;
+  }
+
+  .layer-item.layer-hidden .layer-name { color: var(--muted); }
+
+  .panel-right {
+    width: 280px;
+    flex-shrink: 0;
+    border-left: 1px solid var(--border);
     overflow-y: auto;
     padding: 16px;
     display: flex;
@@ -72,9 +156,9 @@
     gap: 20px;
   }
 
-  .sidebar::-webkit-scrollbar { width: 4px; }
-  .sidebar::-webkit-scrollbar-track { background: transparent; }
-  .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .panel-right::-webkit-scrollbar { width: 4px; }
+  .panel-right::-webkit-scrollbar-track { background: transparent; }
+  .panel-right::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
   .section-label {
     font-size: 10px;
@@ -592,6 +676,111 @@
   .btn-3d:hover:not(:disabled) { background: rgba(160,124,240,0.2); }
   .btn-3d:disabled { opacity: 0.3; cursor: not-allowed; }
 
+  /* Value inputs (editable number fields next to sliders) */
+  .value-input {
+    font-size: 11px;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    width: 48px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 5px;
+    text-align: right;
+    outline: none;
+    -moz-appearance: textfield;
+  }
+  .value-input::-webkit-inner-spin-button,
+  .value-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+  .value-input:focus { border-color: var(--accent); }
+
+  /* Zoom controls */
+  .zoom-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 8px;
+  }
+
+  .zoom-btn {
+    width: 24px; height: 24px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    transition: border-color 0.1s;
+    flex-shrink: 0;
+  }
+  .zoom-btn:hover { border-color: var(--muted); }
+
+  .zoom-display {
+    font-size: 11px;
+    color: var(--text);
+    min-width: 38px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Settings presets */
+  .settings-preset-name {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 5px;
+    padding: 5px 8px;
+    font-size: 11px;
+    outline: none;
+    min-width: 0;
+  }
+  .settings-preset-name:focus { border-color: var(--accent); }
+  .settings-preset-name::placeholder { color: var(--muted); }
+
+  .btn-save-preset {
+    width: 28px; height: 28px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    cursor: pointer;
+    color: var(--muted);
+    flex-shrink: 0;
+    transition: border-color 0.1s, color 0.1s;
+  }
+  .btn-save-preset:hover { border-color: var(--accent); color: var(--accent); }
+
+  .settings-preset-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: background 0.1s;
+  }
+  .settings-preset-item:hover { background: var(--surface2); }
+
+  .preset-del {
+    margin-left: auto;
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 15px;
+    line-height: 1;
+    padding: 0 2px;
+    opacity: 0;
+    transition: opacity 0.1s, color 0.1s;
+    flex-shrink: 0;
+  }
+  .settings-preset-item:hover .preset-del { opacity: 1; }
+  .preset-del:hover { color: var(--text); }
+
   /* Checkerboard bg for transparency */
   .checker {
     background-image:
@@ -614,8 +803,78 @@
 
 <div class="app">
 
-  <!-- SIDEBAR -->
-  <aside class="sidebar">
+  <!-- LEFT LAYERS PANEL -->
+  <aside class="panel-left">
+    <div class="panel-header">Layers</div>
+    <div class="layers-list" id="layersList">
+
+      <div class="layer-item" id="layerNoise">
+        <button class="layer-eye" id="eyeNoise" title="Toggle visibility">
+          <svg id="eyeNoiseOpen" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          <svg id="eyeNoiseClosed" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+        </button>
+        <div class="layer-thumb layer-thumb-noise"></div>
+        <span class="layer-name">Noise</span>
+      </div>
+
+      <div class="layer-item" id="layerBg">
+        <button class="layer-eye" id="eyeBg" title="Toggle visibility">
+          <svg id="eyeBgOpen" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          <svg id="eyeBgClosed" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+        </button>
+        <div class="layer-thumb" id="bgLayerThumb" style="background:#7eecd4"></div>
+        <span class="layer-name">Background</span>
+      </div>
+
+    </div>
+  </aside>
+
+  <!-- CANVAS AREA -->
+  <main class="canvas-area">
+    <div class="canvas-toolbar">
+      <button class="view-btn active" data-view="split">Split</button>
+      <button class="view-btn" data-view="original">Original</button>
+      <button class="view-btn" data-view="output">Result</button>
+      <div class="spacer"></div>
+      <button class="btn-3d" id="particles3dBtn" disabled>✦ 3D Particles</button>
+      <div class="zoom-controls">
+        <button class="zoom-btn" id="zoomOutBtn">−</button>
+        <span class="zoom-display" id="zoomDisplay">100%</span>
+        <button class="zoom-btn" id="zoomInBtn">+</button>
+      </div>
+    </div>
+
+    <div class="canvas-wrap checker" id="canvasWrap">
+      <div class="empty-state" id="emptyState">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 16l5-5 4 4 3-3 6 6"/><circle cx="8.5" cy="8.5" r="1.5"/></svg>
+        <p>Upload an image to get started</p>
+      </div>
+
+      <div id="canvas-container">
+        <div class="split-view" id="splitView">
+          <div class="canvas-card">
+            <span class="canvas-card-label">Original</span>
+            <canvas id="originalCanvas"></canvas>
+          </div>
+          <div class="divider"></div>
+          <div class="canvas-card">
+            <span class="canvas-card-label">Dithered</span>
+            <div style="position:relative">
+              <canvas id="outputCanvas"></canvas>
+              <div class="processing" id="processing"><div class="spinner"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="singleView" style="display:none">
+          <canvas id="singleCanvas"></canvas>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- RIGHT SETTINGS PANEL -->
+  <aside class="panel-right">
 
     <!-- Upload -->
     <div>
@@ -651,14 +910,14 @@
       </div>
     </div>
 
-    <!-- Scale -->
+    <!-- Settings -->
     <div>
       <div class="section-label">Settings</div>
 
       <div class="control">
         <div class="control-row">
           <label>Pixel Scale</label>
-          <span class="value" id="scaleVal">1×</span>
+          <input type="number" class="value-input" id="scaleVal" value="1" min="1" max="12" step="1">
         </div>
         <input type="range" id="scale" min="1" max="12" value="1" step="1">
       </div>
@@ -666,7 +925,7 @@
       <div class="control" style="margin-top:12px">
         <div class="control-row">
           <label>Threshold</label>
-          <span class="value" id="thresholdVal">128</span>
+          <input type="number" class="value-input" id="thresholdVal" value="128" min="0" max="255" step="1">
         </div>
         <input type="range" id="threshold" min="0" max="255" value="128" step="1">
       </div>
@@ -674,7 +933,7 @@
       <div class="control" style="margin-top:12px">
         <div class="control-row">
           <label>Brightness</label>
-          <span class="value" id="brightnessVal">0</span>
+          <input type="number" class="value-input" id="brightnessVal" value="0" min="-100" max="100" step="1">
         </div>
         <input type="range" id="brightness" min="-100" max="100" value="0" step="1">
       </div>
@@ -682,7 +941,7 @@
       <div class="control" style="margin-top:12px">
         <div class="control-row">
           <label>Contrast</label>
-          <span class="value" id="contrastVal">0</span>
+          <input type="number" class="value-input" id="contrastVal" value="0" min="-100" max="100" step="1">
         </div>
         <input type="range" id="contrast" min="-100" max="100" value="0" step="1">
       </div>
@@ -721,10 +980,22 @@
       </div>
     </div>
 
-    <!-- Presets -->
+    <!-- Palette Presets -->
     <div>
       <div class="section-label">Palette Presets</div>
       <div class="preset-list" id="presetList"></div>
+    </div>
+
+    <!-- Settings Presets -->
+    <div>
+      <div class="section-label">Settings Presets</div>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <input type="text" class="settings-preset-name" id="settingsPresetName" placeholder="Preset name…" maxlength="30">
+        <button class="btn-save-preset" id="saveSettingsPresetBtn" title="Save current settings as preset">
+          <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+        </button>
+      </div>
+      <div class="preset-list" id="settingsPresetList"></div>
     </div>
 
     <!-- Actions -->
@@ -737,46 +1008,6 @@
     </div>
 
   </aside>
-
-  <!-- CANVAS AREA -->
-  <main class="canvas-area">
-    <div class="canvas-toolbar">
-      <button class="view-btn active" data-view="split">Split</button>
-      <button class="view-btn" data-view="original">Original</button>
-      <button class="view-btn" data-view="output">Result</button>
-      <div class="spacer"></div>
-      <button class="btn-3d" id="particles3dBtn" disabled>✦ 3D Particles</button>
-      <span class="zoom-label" id="zoomLabel" style="margin-left:8px">—</span>
-    </div>
-
-    <div class="canvas-wrap checker" id="canvasWrap">
-      <div class="empty-state" id="emptyState">
-        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 16l5-5 4 4 3-3 6 6"/><circle cx="8.5" cy="8.5" r="1.5"/></svg>
-        <p>Upload an image to get started</p>
-      </div>
-
-      <div id="canvas-container">
-        <div class="split-view" id="splitView">
-          <div class="canvas-card">
-            <span class="canvas-card-label">Original</span>
-            <canvas id="originalCanvas"></canvas>
-          </div>
-          <div class="divider"></div>
-          <div class="canvas-card">
-            <span class="canvas-card-label">Dithered</span>
-            <div style="position:relative">
-              <canvas id="outputCanvas"></canvas>
-              <div class="processing" id="processing"><div class="spinner"></div></div>
-            </div>
-          </div>
-        </div>
-
-        <div id="singleView" style="display:none">
-          <canvas id="singleCanvas"></canvas>
-        </div>
-      </div>
-    </div>
-  </main>
 
 </div>
 
@@ -840,6 +1071,10 @@ let currentView = 'split';
 let processing = false;
 let pendingRender = false;
 let renderTimeout = null;
+let bgVisible = true;
+let noiseVisible = true;
+let zoomLevel = 1;
+const ZOOM_STEPS = [0.25, 0.33, 0.5, 0.67, 0.75, 1, 1.25, 1.5, 2, 3, 4];
 
 const MAX_DIM = 1200;
 
@@ -869,7 +1104,7 @@ const singCanvas  = document.getElementById('singleCanvas');
 const procEl      = document.getElementById('processing');
 const downloadBtn = document.getElementById('downloadBtn');
 const resetBtn    = document.getElementById('resetBtn');
-const zoomLabel   = document.getElementById('zoomLabel');
+
 const presetList  = document.getElementById('presetList');
 
 // Controls
@@ -889,22 +1124,29 @@ const color2Swatch = document.getElementById('color2Swatch');
 // ──────────────────────────────────────────────
 // Slider labels
 // ──────────────────────────────────────────────
-scaleSlider.addEventListener('input', () => {
-  document.getElementById('scaleVal').textContent = scaleSlider.value + '×';
+const scaleValEl = document.getElementById('scaleVal');
+const thrValEl   = document.getElementById('thresholdVal');
+const briValEl   = document.getElementById('brightnessVal');
+const conValEl   = document.getElementById('contrastVal');
+
+scaleSlider.addEventListener('input', () => { scaleValEl.value = scaleSlider.value; scheduleRender(); });
+thrSlider.addEventListener('input',   () => { thrValEl.value   = thrSlider.value;   scheduleRender(); });
+briSlider.addEventListener('input',   () => { briValEl.value   = briSlider.value;   scheduleRender(); });
+conSlider.addEventListener('input',   () => { conValEl.value   = conSlider.value;   scheduleRender(); });
+
+function clampSync(input, slider) {
+  let v = parseInt(input.value);
+  if (isNaN(v)) v = parseInt(slider.value);
+  v = Math.max(parseInt(slider.min), Math.min(parseInt(slider.max), v));
+  input.value = v;
+  slider.value = v;
   scheduleRender();
-});
-thrSlider.addEventListener('input', () => {
-  document.getElementById('thresholdVal').textContent = thrSlider.value;
-  scheduleRender();
-});
-briSlider.addEventListener('input', () => {
-  document.getElementById('brightnessVal').textContent = (briSlider.value > 0 ? '+' : '') + briSlider.value;
-  scheduleRender();
-});
-conSlider.addEventListener('input', () => {
-  document.getElementById('contrastVal').textContent = (conSlider.value > 0 ? '+' : '') + conSlider.value;
-  scheduleRender();
-});
+}
+
+scaleValEl.addEventListener('change', () => clampSync(scaleValEl, scaleSlider));
+thrValEl.addEventListener('change',   () => clampSync(thrValEl, thrSlider));
+briValEl.addEventListener('change',   () => clampSync(briValEl, briSlider));
+conValEl.addEventListener('change',   () => clampSync(conValEl, conSlider));
 invertChk.addEventListener('change', () => scheduleRender(true));
 ditherType.addEventListener('change', () => scheduleRender(true));
 
@@ -922,6 +1164,8 @@ function applyColor(which, hex, fromPreset = false) {
     color1In.value = hex;
     color1Hex.value = hex;
     color1Swatch.style.background = hex;
+    const bgThumb = document.getElementById('bgLayerThumb');
+    if (bgThumb) bgThumb.style.background = hex;
   } else {
     color2In.value = hex;
     color2Hex.value = hex;
@@ -1284,6 +1528,7 @@ async function render() {
       outCtx.drawImage(outOff, 0, 0, w, h);
     }
 
+    postProcessLayers(outCanvas, c1);
     applyView();
     updateZoom();
   } finally {
@@ -1492,11 +1737,7 @@ function hexToRgb(hex) {
   return { r, g, b };
 }
 
-function updateZoom() {
-  if (!sourceImage) { zoomLabel.textContent = '—'; return; }
-  const { w, h } = getDims();
-  zoomLabel.textContent = `${w} × ${h}px · Scale ${scaleSlider.value}×`;
-}
+function updateZoom() {}
 
 // ──────────────────────────────────────────────
 // Download
@@ -1514,10 +1755,10 @@ downloadBtn.addEventListener('click', () => {
 // ──────────────────────────────────────────────
 resetBtn.addEventListener('click', () => {
   ditherType.value = 'bayer4';
-  scaleSlider.value = 1; document.getElementById('scaleVal').textContent = '1×';
-  thrSlider.value = 128;  document.getElementById('thresholdVal').textContent = '128';
-  briSlider.value = 0;    document.getElementById('brightnessVal').textContent = '0';
-  conSlider.value = 0;    document.getElementById('contrastVal').textContent = '0';
+  scaleSlider.value = 1; scaleValEl.value = 1;
+  thrSlider.value = 128;  thrValEl.value = 128;
+  briSlider.value = 0;    briValEl.value = 0;
+  conSlider.value = 0;    conValEl.value = 0;
   invertChk.checked = false;
   applyColor(1, '#7eecd4');
   applyColor(2, '#a07cf0');
@@ -1918,6 +2159,149 @@ function closeParticleView() {
   p3d.renderer.dispose();
   p3d = null;
 }
+
+// ──────────────────────────────────────────────
+// Layer visibility post-processing
+// ──────────────────────────────────────────────
+function postProcessLayers(canvas, c1) {
+  if (bgVisible && noiseVisible) return;
+  const ctx = canvas.getContext('2d');
+  const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const d = imgData.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const isBg = Math.abs(d[i] - c1.r) + Math.abs(d[i+1] - c1.g) + Math.abs(d[i+2] - c1.b) < 40;
+    if (isBg) {
+      d[i+3] = bgVisible ? 255 : 0;
+    } else {
+      if (!noiseVisible) {
+        d[i] = c1.r; d[i+1] = c1.g; d[i+2] = c1.b;
+        d[i+3] = bgVisible ? 255 : 0;
+      }
+    }
+  }
+  ctx.putImageData(imgData, 0, 0);
+}
+
+// ──────────────────────────────────────────────
+// Layer panel eye toggles
+// ──────────────────────────────────────────────
+function setLayerEye(id, openId, closedId, layerId, visible) {
+  document.getElementById(openId).style.display  = visible ? '' : 'none';
+  document.getElementById(closedId).style.display = visible ? 'none' : '';
+  document.getElementById(id).classList.toggle('off', !visible);
+  document.getElementById(layerId).classList.toggle('layer-hidden', !visible);
+}
+
+document.getElementById('eyeNoise').addEventListener('click', () => {
+  noiseVisible = !noiseVisible;
+  setLayerEye('eyeNoise', 'eyeNoiseOpen', 'eyeNoiseClosed', 'layerNoise', noiseVisible);
+  scheduleRender(true);
+});
+
+document.getElementById('eyeBg').addEventListener('click', () => {
+  bgVisible = !bgVisible;
+  setLayerEye('eyeBg', 'eyeBgOpen', 'eyeBgClosed', 'layerBg', bgVisible);
+  scheduleRender(true);
+});
+
+// ──────────────────────────────────────────────
+// Zoom
+// ──────────────────────────────────────────────
+function setZoom(level) {
+  zoomLevel = Math.max(ZOOM_STEPS[0], Math.min(ZOOM_STEPS[ZOOM_STEPS.length - 1], level));
+  document.getElementById('canvas-container').style.zoom = zoomLevel;
+  document.getElementById('zoomDisplay').textContent = Math.round(zoomLevel * 100) + '%';
+}
+
+document.getElementById('zoomInBtn').addEventListener('click', () => {
+  const next = ZOOM_STEPS.find(s => s > zoomLevel + 0.001) || ZOOM_STEPS[ZOOM_STEPS.length - 1];
+  setZoom(next);
+});
+
+document.getElementById('zoomOutBtn').addEventListener('click', () => {
+  const prev = [...ZOOM_STEPS].reverse().find(s => s < zoomLevel - 0.001) || ZOOM_STEPS[0];
+  setZoom(prev);
+});
+
+document.getElementById('canvasWrap').addEventListener('wheel', (e) => {
+  if (!e.ctrlKey && !e.metaKey) return;
+  e.preventDefault();
+  const dir = e.deltaY < 0 ? 1 : -1;
+  const cur = ZOOM_STEPS.findIndex(s => Math.abs(s - zoomLevel) < 0.001);
+  const idx = cur === -1 ? ZOOM_STEPS.findIndex(s => s >= zoomLevel) : cur;
+  const next = ZOOM_STEPS[Math.max(0, Math.min(ZOOM_STEPS.length - 1, idx + dir))];
+  setZoom(next);
+}, { passive: false });
+
+// ──────────────────────────────────────────────
+// Settings presets (localStorage)
+// ──────────────────────────────────────────────
+let settingsPresets = JSON.parse(localStorage.getItem('noiseStudioPresets') || '[]');
+
+function getCurrentSettings() {
+  return {
+    ditherType: ditherType.value,
+    scale: scaleSlider.value,
+    threshold: thrSlider.value,
+    brightness: briSlider.value,
+    contrast: conSlider.value,
+    invert: invertChk.checked,
+    color1: color1In.value,
+    color2: color2In.value,
+  };
+}
+
+function applySettingsPreset(s) {
+  ditherType.value  = s.ditherType;
+  scaleSlider.value = s.scale;   scaleValEl.value = s.scale;
+  thrSlider.value   = s.threshold; thrValEl.value = s.threshold;
+  briSlider.value   = s.brightness; briValEl.value = s.brightness;
+  conSlider.value   = s.contrast;   conValEl.value = s.contrast;
+  invertChk.checked = s.invert;
+  applyColor(1, s.color1);
+  applyColor(2, s.color2);
+  scheduleRender(true);
+}
+
+function saveSettingsPresetsToStorage() {
+  localStorage.setItem('noiseStudioPresets', JSON.stringify(settingsPresets));
+}
+
+function renderSettingsPresetList() {
+  const list = document.getElementById('settingsPresetList');
+  list.innerHTML = '';
+  settingsPresets.forEach((p, i) => {
+    const el = document.createElement('div');
+    el.className = 'settings-preset-item';
+    el.innerHTML = `
+      <div class="preset-swatches">
+        <div class="preset-swatch" style="background:${p.color1}"></div>
+        <div class="preset-swatch" style="background:${p.color2}"></div>
+      </div>
+      <span class="preset-name">${p.name}</span>
+      <button class="preset-del" title="Delete">×</button>
+    `;
+    el.querySelector('.preset-del').addEventListener('click', (e) => {
+      e.stopPropagation();
+      settingsPresets.splice(i, 1);
+      saveSettingsPresetsToStorage();
+      renderSettingsPresetList();
+    });
+    el.addEventListener('click', () => applySettingsPreset(p));
+    list.appendChild(el);
+  });
+}
+
+document.getElementById('saveSettingsPresetBtn').addEventListener('click', () => {
+  const nameInput = document.getElementById('settingsPresetName');
+  const name = nameInput.value.trim() || `Preset ${settingsPresets.length + 1}`;
+  settingsPresets.push({ name, ...getCurrentSettings() });
+  saveSettingsPresetsToStorage();
+  renderSettingsPresetList();
+  nameInput.value = '';
+});
+
+renderSettingsPresetList();
 
 // ──────────────────────────────────────────────
 // Export standalone HTML for web embedding
