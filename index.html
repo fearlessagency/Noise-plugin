@@ -442,6 +442,9 @@
   }
 
   .view-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
     padding: 5px 12px;
     border-radius: 5px;
     font-size: 11px;
@@ -832,9 +835,10 @@
   <!-- CANVAS AREA -->
   <main class="canvas-area">
     <div class="canvas-toolbar">
-      <button class="view-btn active" data-view="split">Split</button>
-      <button class="view-btn" data-view="original">Original</button>
-      <button class="view-btn" data-view="output">Result</button>
+      <button class="view-btn" id="previewOriginalBtn">
+        <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        Preview Original
+      </button>
       <div class="spacer"></div>
       <button class="btn-3d" id="particles3dBtn" disabled>✦ 3D Particles</button>
       <div class="zoom-controls">
@@ -1067,7 +1071,7 @@
 // State
 // ──────────────────────────────────────────────
 let sourceImage = null;
-let currentView = 'split';
+let currentView = 'output';
 let processing = false;
 let pendingRender = false;
 let renderTimeout = null;
@@ -1282,31 +1286,22 @@ function getDims() {
 }
 
 // ──────────────────────────────────────────────
-// View toggle
+// View toggle — preview original
 // ──────────────────────────────────────────────
-document.querySelectorAll('.view-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    currentView = btn.dataset.view;
-    applyView();
-  });
+document.getElementById('previewOriginalBtn').addEventListener('click', () => {
+  currentView = currentView === 'original' ? 'output' : 'original';
+  document.getElementById('previewOriginalBtn').classList.toggle('active', currentView === 'original');
+  applyView();
 });
 
 function applyView() {
   if (!sourceImage) return;
-  if (currentView === 'split') {
-    splitView.style.display = 'flex';
-    singleView.style.display = 'none';
-  } else {
-    splitView.style.display = 'none';
-    singleView.style.display = 'block';
-    const ctx = singCanvas.getContext('2d');
-    const src = currentView === 'original' ? origCanvas : outCanvas;
-    singCanvas.width = src.width;
-    singCanvas.height = src.height;
-    ctx.drawImage(src, 0, 0);
-  }
+  splitView.style.display = 'none';
+  singleView.style.display = 'block';
+  const src = currentView === 'original' ? origCanvas : outCanvas;
+  singCanvas.width = src.width;
+  singCanvas.height = src.height;
+  singCanvas.getContext('2d').drawImage(src, 0, 0);
 }
 
 // ──────────────────────────────────────────────
