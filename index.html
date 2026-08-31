@@ -1456,7 +1456,9 @@ async function renderEffectLayerToCanvas(layer) {
         if(px<dw&&py<dh){sum+=gray[py*dw+px];cnt++;}
       }
       if(!cnt) continue;
-      const r=Math.sqrt((255-sum/cnt)/255)*maxR;
+      const t=(255-sum/cnt)/255;
+      if(t<0.08) continue;
+      const r=Math.sqrt(t)*maxR;
       if(r<0.4) continue;
       lCtx.beginPath(); lCtx.arc((cx*cell+cell/2)*scale,(cy*cell+cell/2)*scale,r,0,Math.PI*2); lCtx.fill();
     }
@@ -1470,7 +1472,9 @@ async function renderEffectLayerToCanvas(layer) {
         if(px<dw&&py<dh){sum+=gray[py*dw+px];cnt++;}
       }
       if(!cnt) continue;
-      const outerR=Math.sqrt((255-sum/cnt)/255)*maxR;
+      const t=(255-sum/cnt)/255;
+      if(t<0.08) continue;
+      const outerR=Math.sqrt(t)*maxR;
       if(outerR<0.5) continue;
       const pcx=(cx*cell+cell/2)*scale,pcy=(cy*cell+cell/2)*scale;
       lCtx.beginPath(); lCtx.arc(pcx,pcy,outerR,0,Math.PI*2);
@@ -1492,6 +1496,7 @@ async function renderEffectLayerToCanvas(layer) {
       }
       if(!cnt) continue;
       const t=(255-sum/cnt)/255;
+      if(t<0.08) continue;
       const r=Math.pow(t,0.65)*maxR; if(r<0.5) continue;
       const scatter=cellPx*0.2*t;
       const pcx=(cx*cell+cell/2)*scale+(lcg()-0.5)*scatter;
@@ -1621,6 +1626,7 @@ async function render() {
           }
           if (!cnt) continue;
           const t = (255 - sum / cnt) / 255; // 0=white→no dot, 1=black→full dot
+          if (t < 0.08) continue;
           const r = Math.sqrt(t) * maxR;      // sqrt gives more midtone dots (like Image #15)
           if (r < 0.4) continue;
           outCtx.beginPath();
@@ -1660,6 +1666,7 @@ async function render() {
           if (!cnt) continue;
 
           const t = (255 - sum / cnt) / 255;
+          if (t < 0.08) continue;
           const outerR = Math.sqrt(t) * maxR;
           if (outerR < 0.5) continue;
           const innerR = outerR * holeRatio;
@@ -1710,6 +1717,7 @@ async function render() {
           if (!cnt) continue;
 
           const t = (255 - sum / cnt) / 255;
+          if (t < 0.08) continue;
           const r = Math.pow(t, 0.65) * maxR;
           if (r < 0.5) continue;
 
