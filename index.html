@@ -1434,6 +1434,8 @@ async function renderEffectLayerToCanvas(layer) {
   const off = document.createElement('canvas');
   off.width = dw; off.height = dh;
   const octx = off.getContext('2d');
+  octx.fillStyle = '#ffffff';
+  octx.fillRect(0, 0, dw, dh);
   octx.drawImage(sourceImage, 0, 0, dw, dh);
   let imgData = octx.getImageData(0, 0, dw, dh);
   const origGray = toGrayscaleArray(imgData.data, dw, dh);
@@ -1586,6 +1588,8 @@ async function render() {
     const off = document.createElement('canvas');
     off.width = dw; off.height = dh;
     const octx = off.getContext('2d');
+    octx.fillStyle = '#ffffff';
+    octx.fillRect(0, 0, dw, dh);
     octx.drawImage(sourceImage, 0, 0, dw, dh);
 
     let imgData = octx.getImageData(0, 0, dw, dh);
