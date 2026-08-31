@@ -1436,6 +1436,7 @@ async function renderEffectLayerToCanvas(layer) {
   const octx = off.getContext('2d');
   octx.drawImage(sourceImage, 0, 0, dw, dh);
   let imgData = octx.getImageData(0, 0, dw, dh);
+  const origGray = toGrayscaleArray(imgData.data, dw, dh);
   applyAdjustments(imgData.data, layer.brightness, layer.contrast, layer.invert);
   const gray = toGrayscaleArray(imgData.data, dw, dh);
 
@@ -1450,14 +1451,14 @@ async function renderEffectLayerToCanvas(layer) {
     const cell = 4, cellPx = cell * scale, maxR = cellPx * 0.58;
     const cols = Math.ceil(dw/cell), rows = Math.ceil(dh/cell);
     for (let cy=0;cy<rows;cy++) for (let cx=0;cx<cols;cx++) {
-      let sum=0,cnt=0;
+      let sum=0,origSum=0,cnt=0;
       for (let dy=0;dy<cell;dy++) for (let dx=0;dx<cell;dx++) {
         const px=cx*cell+dx,py=cy*cell+dy;
-        if(px<dw&&py<dh){sum+=gray[py*dw+px];cnt++;}
+        if(px<dw&&py<dh){sum+=gray[py*dw+px];origSum+=origGray[py*dw+px];cnt++;}
       }
       if(!cnt) continue;
+      if((255-origSum/cnt)/255<0.08) continue;
       const t=(255-sum/cnt)/255;
-      if(t<0.08) continue;
       const r=Math.sqrt(t)*maxR;
       if(r<0.4) continue;
       lCtx.beginPath(); lCtx.arc((cx*cell+cell/2)*scale,(cy*cell+cell/2)*scale,r,0,Math.PI*2); lCtx.fill();
@@ -1466,14 +1467,14 @@ async function renderEffectLayerToCanvas(layer) {
     const cell=6,cellPx=cell*scale,maxR=cellPx*0.52,holeRatio=0.42;
     const cols=Math.ceil(dw/cell),rows=Math.ceil(dh/cell);
     for (let cy=0;cy<rows;cy++) for (let cx=0;cx<cols;cx++) {
-      let sum=0,cnt=0;
+      let sum=0,origSum=0,cnt=0;
       for (let dy=0;dy<cell;dy++) for (let dx=0;dx<cell;dx++) {
         const px=cx*cell+dx,py=cy*cell+dy;
-        if(px<dw&&py<dh){sum+=gray[py*dw+px];cnt++;}
+        if(px<dw&&py<dh){sum+=gray[py*dw+px];origSum+=origGray[py*dw+px];cnt++;}
       }
       if(!cnt) continue;
+      if((255-origSum/cnt)/255<0.08) continue;
       const t=(255-sum/cnt)/255;
-      if(t<0.08) continue;
       const outerR=Math.sqrt(t)*maxR;
       if(outerR<0.5) continue;
       const pcx=(cx*cell+cell/2)*scale,pcy=(cy*cell+cell/2)*scale;
@@ -1489,14 +1490,14 @@ async function renderEffectLayerToCanvas(layer) {
     let rngSeed=0xdeadcafe;
     const lcg=()=>{rngSeed=(rngSeed*1664525+1013904223)>>>0;return rngSeed/0xffffffff;};
     for (let cy=0;cy<rows;cy++) for (let cx=0;cx<cols;cx++) {
-      let sum=0,cnt=0;
+      let sum=0,origSum=0,cnt=0;
       for (let dy=0;dy<cell;dy++) for (let dx=0;dx<cell;dx++) {
         const px=cx*cell+dx,py=cy*cell+dy;
-        if(px<dw&&py<dh){sum+=gray[py*dw+px];cnt++;}
+        if(px<dw&&py<dh){sum+=gray[py*dw+px];origSum+=origGray[py*dw+px];cnt++;}
       }
       if(!cnt) continue;
+      if((255-origSum/cnt)/255<0.08) continue;
       const t=(255-sum/cnt)/255;
-      if(t<0.08) continue;
       const r=Math.pow(t,0.65)*maxR; if(r<0.5) continue;
       const scatter=cellPx*0.2*t;
       const pcx=(cx*cell+cell/2)*scale+(lcg()-0.5)*scatter;
@@ -1591,6 +1592,7 @@ async function render() {
     let pixels = imgData.data;
 
     // Apply brightness/contrast + grayscale
+    const origGray = toGrayscaleArray(pixels, dw, dh);
     applyAdjustments(pixels, bri, con, inv);
 
     // Dither
@@ -1617,16 +1619,16 @@ async function render() {
       for (let cy = 0; cy < rows; cy++) {
         for (let cx = 0; cx < cols; cx++) {
           // Average luminance over the cell
-          let sum = 0, cnt = 0;
+          let sum = 0, origSum = 0, cnt = 0;
           for (let dy = 0; dy < cell; dy++) {
             for (let dx = 0; dx < cell; dx++) {
               const px = cx * cell + dx, py = cy * cell + dy;
-              if (px < dw && py < dh) { sum += gray[py * dw + px]; cnt++; }
+              if (px < dw && py < dh) { sum += gray[py * dw + px]; origSum += origGray[py * dw + px]; cnt++; }
             }
           }
           if (!cnt) continue;
+          if ((255 - origSum / cnt) / 255 < 0.08) continue;
           const t = (255 - sum / cnt) / 255; // 0=white→no dot, 1=black→full dot
-          if (t < 0.08) continue;
           const r = Math.sqrt(t) * maxR;      // sqrt gives more midtone dots (like Image #15)
           if (r < 0.4) continue;
           outCtx.beginPath();
@@ -1656,17 +1658,17 @@ async function render() {
 
       for (let cy = 0; cy < rows; cy++) {
         for (let cx = 0; cx < cols; cx++) {
-          let sum = 0, cnt = 0;
+          let sum = 0, origSum = 0, cnt = 0;
           for (let dy = 0; dy < cell; dy++) {
             for (let dx = 0; dx < cell; dx++) {
               const px = cx * cell + dx, py = cy * cell + dy;
-              if (px < dw && py < dh) { sum += gray[py * dw + px]; cnt++; }
+              if (px < dw && py < dh) { sum += gray[py * dw + px]; origSum += origGray[py * dw + px]; cnt++; }
             }
           }
           if (!cnt) continue;
 
           const t = (255 - sum / cnt) / 255;
-          if (t < 0.08) continue;
+          if ((255 - origSum / cnt) / 255 < 0.08) continue;
           const outerR = Math.sqrt(t) * maxR;
           if (outerR < 0.5) continue;
           const innerR = outerR * holeRatio;
@@ -1707,17 +1709,17 @@ async function render() {
 
       for (let cy = 0; cy < rows; cy++) {
         for (let cx = 0; cx < cols; cx++) {
-          let sum = 0, cnt = 0;
+          let sum = 0, origSum = 0, cnt = 0;
           for (let dy = 0; dy < cell; dy++) {
             for (let dx = 0; dx < cell; dx++) {
               const px = cx * cell + dx, py = cy * cell + dy;
-              if (px < dw && py < dh) { sum += gray[py * dw + px]; cnt++; }
+              if (px < dw && py < dh) { sum += gray[py * dw + px]; origSum += origGray[py * dw + px]; cnt++; }
             }
           }
           if (!cnt) continue;
 
           const t = (255 - sum / cnt) / 255;
-          if (t < 0.08) continue;
+          if ((255 - origSum / cnt) / 255 < 0.08) continue;
           const r = Math.pow(t, 0.65) * maxR;
           if (r < 0.5) continue;
 
