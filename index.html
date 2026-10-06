@@ -832,6 +832,15 @@
     background-position: 0 0, 0 6px, 6px -6px, -6px 0;
     background-color: #141416;
   }
+
+  /* Contour (topographic) settings */
+  .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field label { font-size: 11px; color: var(--muted); }
+  .field-input { width: 100%; text-align: left; padding: 5px 7px; font-size: 12px; }
+  .contour-note { font-size: 11px; line-height: 1.45; color: var(--muted); margin: 0 0 8px; }
+  .contour-note.warn { color: #f0b37c; }
+  .contour-note:empty { display: none; }
 </style>
 </head>
 <body>
@@ -941,6 +950,7 @@
             <option value="halftoneSmooth">Halftone — Smooth Gradient</option>
             <option value="dotScatter">Halftone — Dot Scatter</option>
             <option value="ringDots">Halftone — Ring Dots</option>
+            <option value="contour">Topographic — Contour Lines</option>
           </select>
         </div>
       </div>
@@ -957,7 +967,7 @@
           <input type="range" id="scale" min="1" max="12" value="1" step="1">
         </div>
 
-        <div class="control" style="margin-top:12px">
+        <div class="control raster-only" style="margin-top:12px">
           <div class="control-row">
             <label>Threshold</label>
             <input type="number" class="value-input" id="thresholdVal" value="128" min="0" max="255" step="1">
@@ -965,7 +975,7 @@
           <input type="range" id="threshold" min="0" max="255" value="128" step="1">
         </div>
 
-        <div class="control" style="margin-top:12px">
+        <div class="control raster-only" style="margin-top:12px">
           <div class="control-row">
             <label>Brightness</label>
             <input type="number" class="value-input" id="brightnessVal" value="0" min="-100" max="100" step="1">
@@ -973,7 +983,7 @@
           <input type="range" id="brightness" min="-100" max="100" value="0" step="1">
         </div>
 
-        <div class="control" style="margin-top:12px">
+        <div class="control raster-only" style="margin-top:12px">
           <div class="control-row">
             <label>Contrast</label>
             <input type="number" class="value-input" id="contrastVal" value="0" min="-100" max="100" step="1">
@@ -990,9 +1000,87 @@
         </div>
       </div>
 
+      <!-- Contour settings (only for Topographic mode) -->
+      <div id="contourSettings" style="display:none; margin-top:20px">
+        <div class="section-label">Elevation Model</div>
+        <p class="contour-note" id="contourSourceInfo"></p>
+        <div class="field-grid">
+          <div class="field">
+            <label for="contourMinElev">Black = (m)</label>
+            <input type="number" class="value-input field-input" id="contourMinElev" value="0" step="any">
+          </div>
+          <div class="field">
+            <label for="contourMaxElev">White = (m)</label>
+            <input type="number" class="value-input field-input" id="contourMaxElev" value="1000" step="any">
+          </div>
+          <div class="field">
+            <label for="contourInterval">Interval (m)</label>
+            <input type="number" class="value-input field-input" id="contourInterval" value="20" min="0.001" step="any">
+          </div>
+          <div class="field">
+            <label for="contourIndex">Index every</label>
+            <input type="number" class="value-input field-input" id="contourIndex" value="5" min="0" max="50" step="1">
+          </div>
+        </div>
+        <p class="contour-note" id="contourStats" style="margin-top:8px"></p>
+
+        <div class="section-label" style="margin-top:16px">Contour Lines</div>
+        <div class="control">
+          <div class="control-row">
+            <label>Smoothing (σ px)</label>
+            <input type="number" class="value-input" id="contourSmoothVal" value="1.5" min="0" max="12" step="0.5">
+          </div>
+          <input type="range" id="contourSmooth" min="0" max="12" value="1.5" step="0.5">
+        </div>
+        <div class="control" style="margin-top:12px">
+          <div class="control-row">
+            <label>Line Width</label>
+            <input type="number" class="value-input" id="contourWidthVal" value="1" min="0.25" max="6" step="0.25">
+          </div>
+          <input type="range" id="contourWidth" min="0.25" max="6" value="1" step="0.25">
+        </div>
+        <div class="control" style="margin-top:12px">
+          <div class="control-row">
+            <label>Drop Lines Shorter Than</label>
+            <input type="number" class="value-input" id="contourMinLenVal" value="16" min="0" max="200" step="1">
+          </div>
+          <input type="range" id="contourMinLen" min="0" max="200" value="16" step="1">
+        </div>
+
+        <div class="section-label" style="margin-top:16px">Elevation Labels</div>
+        <div class="toggle-row" style="margin-top:12px">
+          <label>Show Labels</label>
+          <label class="toggle">
+            <input type="checkbox" id="contourLabels" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="control" style="margin-top:12px">
+          <div class="control-row">
+            <label>Label Size</label>
+            <input type="number" class="value-input" id="contourLabelSizeVal" value="11" min="6" max="28" step="1">
+          </div>
+          <input type="range" id="contourLabelSize" min="6" max="28" value="11" step="1">
+        </div>
+        <div class="control" style="margin-top:12px">
+          <div class="control-row">
+            <label>Label Spacing</label>
+            <input type="number" class="value-input" id="contourLabelSpacingVal" value="360" min="80" max="1200" step="10">
+          </div>
+          <input type="range" id="contourLabelSpacing" min="80" max="1200" value="360" step="10">
+        </div>
+        <div class="toggle-row" style="margin-top:12px">
+          <label>Labels Read Uphill</label>
+          <label class="toggle">
+            <input type="checkbox" id="contourUphill" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
       <!-- Dot Color + Opacity -->
-      <div>
-        <div class="section-label">Dot Color</div>
+      <div style="margin-top:20px">
+        <div class="section-label" id="fgColorLabel">Dot Color</div>
         <div class="color-row">
           <div class="color-swatch" id="color2Swatch" style="background:#a07cf0" title="Open color picker">
             <input type="color" id="color2" value="#a07cf0">
@@ -1045,6 +1133,7 @@
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
         Download PNG
       </button>
+      <button class="btn btn-outline" id="downloadSvgBtn" disabled title="Contour layers export as vector paths; other effects are embedded as images">Download SVG (vector contours)</button>
       <button class="btn btn-outline" id="resetBtn" disabled>Reset Settings</button>
     </div>
 
@@ -1123,6 +1212,13 @@ let _layerCnt = 0;
 function makeBgLayer(color = '#0e0e10') {
   return { id: 'bg', name: 'Background', type: 'bg', color, visible: true };
 }
+// Topographic contour settings (elevations in metres)
+const CONTOUR_DEFAULTS = {
+  contourMinElev: 0, contourMaxElev: 1000, contourInterval: 20, contourIndex: 5,
+  contourSmooth: 1.5, contourWidth: 1, contourMinLen: 16,
+  contourLabels: true, contourLabelSize: 11, contourLabelSpacing: 360, contourUphill: true,
+};
+const CONTOUR_CONTROLS = Object.keys(CONTOUR_DEFAULTS);
 function makeEffectLayer() {
   _layerCnt++;
   return {
@@ -1137,6 +1233,7 @@ function makeEffectLayer() {
     invert: false,
     color: '#ffffff',
     opacity: 100,
+    ...CONTOUR_DEFAULTS,
     visible: true,
   };
 }
@@ -1156,6 +1253,7 @@ const PRESETS = [
   { name: 'Rose & Teal',    c1: '#ff8fa3', c2: '#0d7377' },
   { name: 'Paper & Ink',    c1: '#f5f0e8', c2: '#1c1008' },
   { name: 'Neon Night',     c1: '#00ff88', c2: '#0a0020' },
+  { name: 'Topo Map',       c1: '#f4efe3', c2: '#9a5a2c' },
 ];
 
 // ──────────────────────────────────────────────
@@ -1236,7 +1334,48 @@ thrValEl.addEventListener('change',   () => clampSync(thrValEl, thrSlider, 'thre
 briValEl.addEventListener('change',   () => clampSync(briValEl, briSlider, 'brightness'));
 conValEl.addEventListener('change',   () => clampSync(conValEl, conSlider, 'contrast'));
 invertChk.addEventListener('change', () => { const l=selectedEffLayer(); if(l) l.invert=invertChk.checked; scheduleRender(true); captureHistory(); });
-ditherType.addEventListener('change', () => { const l=selectedEffLayer(); if(l) l.ditherType=ditherType.value; scheduleRender(true); captureHistory(); });
+ditherType.addEventListener('change', () => { const l=selectedEffLayer(); if(l) l.ditherType=ditherType.value; updateContourVisibility(); scheduleRender(true); captureHistory(); });
+
+// Contour controls — bound to layer props. Ranges pair with a number input (<id>Val),
+// standalone number fields are validated, checkboxes are booleans.
+const contourSettingsEl = document.getElementById('contourSettings');
+function updateContourVisibility() {
+  const isContour = ditherType.value === 'contour';
+  contourSettingsEl.style.display = isContour ? '' : 'none';
+  document.querySelectorAll('.raster-only').forEach(el => el.style.display = isContour ? 'none' : '');
+  document.getElementById('fgColorLabel').textContent = isContour ? 'Line Color' : 'Dot Color';
+}
+function sanitizeContourValue(prop, v) {
+  if (prop === 'contourInterval') return v > 0 ? v : null;
+  if (prop === 'contourIndex') return v >= 0 ? Math.round(v) : null;
+  return v;
+}
+for (const prop of CONTOUR_CONTROLS) {
+  const el = document.getElementById(prop);
+  const setProp = v => { const l = selectedEffLayer(); if (l) l[prop] = v; };
+  if (el.type === 'checkbox') {
+    el.addEventListener('change', () => { setProp(el.checked); scheduleRender(true); captureHistory(); });
+  } else if (el.type === 'range') {
+    const input = document.getElementById(prop + 'Val');
+    el.addEventListener('input', () => { input.value = el.value; setProp(parseFloat(el.value)); scheduleRender(); });
+    el.addEventListener('change', captureHistory);
+    input.addEventListener('change', () => {
+      let v = parseFloat(input.value);
+      if (isNaN(v)) v = parseFloat(el.value);
+      v = Math.max(parseFloat(el.min), Math.min(parseFloat(el.max), v));
+      input.value = v; el.value = v; setProp(v);
+      scheduleRender(); captureHistory();
+    });
+  } else {
+    el.addEventListener('change', () => {
+      const l = selectedEffLayer();
+      const v = sanitizeContourValue(prop, parseFloat(el.value));
+      if (v === null || isNaN(v)) { el.value = l ? l[prop] ?? CONTOUR_DEFAULTS[prop] : CONTOUR_DEFAULTS[prop]; return; }
+      el.value = v; setProp(v);
+      scheduleRender(true); captureHistory();
+    });
+  }
+}
 
 // ──────────────────────────────────────────────
 // Color pickers
@@ -1336,7 +1475,12 @@ uploadZone.addEventListener('drop', e => {
 function loadFile(file) {
   const url = URL.createObjectURL(file);
   const img = new Image();
-  img.onload = () => {
+  const elevPromise = /png$/i.test(file.type) || /\.png$/i.test(file.name)
+    ? file.arrayBuffer().then(decodePng16).catch(() => null)
+    : Promise.resolve(null);
+  img.onload = async () => {
+    sourceElev = await elevPromise;
+    lastContourGeo.clear();
     sourceImage = img;
     URL.revokeObjectURL(url);
     // Init layer system on first load
@@ -1354,6 +1498,7 @@ function loadFile(file) {
     emptyState.style.display = 'none';
     ccont.style.display = 'block';
     downloadBtn.disabled = false;
+    downloadSvgBtn.disabled = false;
     resetBtn.disabled = false;
     document.getElementById('particles3dBtn').disabled = false;
     updateZoom();
@@ -1512,6 +1657,12 @@ async function renderEffectLayerToCanvas(layer) {
       lCtx.beginPath(); lCtx.arc(pcx,pcy,r*2.2,0,Math.PI*2);
       lCtx.fillStyle=grad; lCtx.fill();
     }
+  } else if (type === 'contour') {
+    // Topographic contour lines — elevation model → isolines via marching squares
+    const geo = computeContourGeometry(layer, origGray, dw, dh, scale);
+    lastContourGeo.set(layer.id, geo);
+    if (layer.id === selectedLayerId) updateContourInfo(geo);
+    drawContourGeometry(lCtx, geo, layer.color);
   } else {
     const result = applyDither(type, gray, dw, dh, layer.threshold);
     const outOff = document.createElement('canvas');
@@ -1852,7 +2003,8 @@ function orderedDither(gray, w, h, matrix, size) {
   const out = new Uint8Array(w * h);
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
-      const threshold = (matrix[y % size][x % size] / size) * 255;
+      const n = matrix.length;
+      const threshold = (matrix[y % n][x % n] / size) * 255;
       out[y * w + x] = gray[y * w + x] > threshold ? 0 : 1;
     }
   }
@@ -1971,6 +2123,408 @@ function halftoneDither(gray, w, h) {
 }
 
 // ──────────────────────────────────────────────
+// Contour lines (topographic)
+// ──────────────────────────────────────────────
+// Height source: 16-bit PNG DEMs are decoded losslessly (65 536 height steps);
+// any other image falls back to 8-bit luminance (256 steps). White = high, Invert flips.
+// Brightness / Contrast are ignored here so labelled elevations stay true to the source.
+const MAX_CONTOUR_LEVELS = 1000;
+let sourceElev = null; // { w, h, data: Float32Array 0..1 }
+const lastContourGeo = new Map(); // layer id → geometry from the last render (used by SVG export)
+
+async function decodePng16(buf) {
+  const u8 = new Uint8Array(buf);
+  const SIG = [137, 80, 78, 71, 13, 10, 26, 10];
+  if (u8.length < 33 || SIG.some((v, i) => u8[i] !== v)) return null;
+  const dv = new DataView(buf);
+  let pos = 8, w = 0, h = 0, depth = 0, ctype = 0, interlace = 0;
+  const idat = [];
+  while (pos + 8 <= u8.length) {
+    const len = dv.getUint32(pos);
+    const type = String.fromCharCode(u8[pos + 4], u8[pos + 5], u8[pos + 6], u8[pos + 7]);
+    if (type === 'IHDR') {
+      w = dv.getUint32(pos + 8); h = dv.getUint32(pos + 12);
+      depth = u8[pos + 16]; ctype = u8[pos + 17]; interlace = u8[pos + 20];
+    } else if (type === 'IDAT') idat.push(u8.subarray(pos + 8, pos + 8 + len));
+    else if (type === 'IEND') break;
+    pos += 12 + len;
+  }
+  if (depth !== 16 || interlace !== 0) return null;
+  const channels = { 0: 1, 2: 3, 4: 2, 6: 4 }[ctype];
+  if (!channels) return null;
+  const stream = new Blob(idat).stream().pipeThrough(new DecompressionStream('deflate'));
+  const raw = new Uint8Array(await new Response(stream).arrayBuffer());
+  const bpp = channels * 2, stride = w * bpp;
+  if (raw.length < h * (stride + 1)) return null;
+  let cur = new Uint8Array(stride), prev = new Uint8Array(stride);
+  const data = new Float32Array(w * h);
+  for (let y = 0; y < h; y++) {
+    const base = y * (stride + 1), filter = raw[base];
+    for (let i = 0; i < stride; i++) {
+      const a = i >= bpp ? cur[i - bpp] : 0, b = prev[i], c = i >= bpp ? prev[i - bpp] : 0;
+      let v = raw[base + 1 + i];
+      if (filter === 1) v += a;
+      else if (filter === 2) v += b;
+      else if (filter === 3) v += (a + b) >> 1;
+      else if (filter === 4) {
+        const p = a + b - c, pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c);
+        v += (pa <= pb && pa <= pc) ? a : (pb <= pc ? b : c);
+      }
+      cur[i] = v;
+    }
+    for (let x = 0; x < w; x++) {
+      const o = x * bpp;
+      const val = channels >= 3
+        ? 0.299 * ((cur[o] << 8) | cur[o + 1]) + 0.587 * ((cur[o + 2] << 8) | cur[o + 3]) + 0.114 * ((cur[o + 4] << 8) | cur[o + 5])
+        : (cur[o] << 8) | cur[o + 1];
+      data[y * w + x] = val / 65535;
+    }
+    [prev, cur] = [cur, prev];
+  }
+  return { w, h, data };
+}
+
+// Box-average downsample (each target pixel = mean of the source pixels it covers)
+function areaResample(src, sw, sh, dw, dh) {
+  if (sw === dw && sh === dh) return new Float32Array(src);
+  const out = new Float32Array(dw * dh);
+  for (let ty = 0; ty < dh; ty++) {
+    const y0 = Math.floor(ty * sh / dh), y1 = Math.max(y0 + 1, Math.floor((ty + 1) * sh / dh));
+    for (let tx = 0; tx < dw; tx++) {
+      const x0 = Math.floor(tx * sw / dw), x1 = Math.max(x0 + 1, Math.floor((tx + 1) * sw / dw));
+      let sum = 0;
+      for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) sum += src[y * sw + x];
+      out[ty * dw + tx] = sum / ((y1 - y0) * (x1 - x0));
+    }
+  }
+  return out;
+}
+
+// Separable gaussian blur, clamped edges
+function gaussianBlur(src, w, h, sigma) {
+  if (sigma < 0.25) return src;
+  const r = Math.ceil(sigma * 3);
+  const k = new Float32Array(2 * r + 1);
+  let ksum = 0;
+  for (let i = -r; i <= r; i++) { k[i + r] = Math.exp(-(i * i) / (2 * sigma * sigma)); ksum += k[i + r]; }
+  for (let i = 0; i < k.length; i++) k[i] /= ksum;
+  const tmp = new Float32Array(w * h), out = new Float32Array(w * h);
+  for (let y = 0; y < h; y++) {
+    const row = y * w;
+    for (let x = 0; x < w; x++) {
+      let s = 0;
+      for (let i = -r; i <= r; i++) s += src[row + Math.min(w - 1, Math.max(0, x + i))] * k[i + r];
+      tmp[row + x] = s;
+    }
+  }
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let s = 0;
+      for (let i = -r; i <= r; i++) s += tmp[Math.min(h - 1, Math.max(0, y + i)) * w + x] * k[i + r];
+      out[y * w + x] = s;
+    }
+  }
+  return out;
+}
+
+function contourParams(layer) {
+  return Object.fromEntries(CONTOUR_CONTROLS.map(p => [p, layer[p] ?? CONTOUR_DEFAULTS[p]]));
+}
+
+// Elevation field in metres at grid resolution dw×dh
+function buildElevationField(P, invert, origGray, dw, dh) {
+  let v;
+  if (sourceElev) {
+    v = areaResample(sourceElev.data, sourceElev.w, sourceElev.h, dw, dh);
+  } else {
+    v = new Float32Array(dw * dh);
+    for (let i = 0; i < v.length; i++) v[i] = origGray[i] / 255;
+  }
+  if (invert) for (let i = 0; i < v.length; i++) v[i] = 1 - v[i];
+  v = gaussianBlur(v, dw, dh, P.contourSmooth);
+  const lo = P.contourMinElev, span = P.contourMaxElev - P.contourMinElev;
+  for (let i = 0; i < v.length; i++) v[i] = lo + v[i] * span;
+  return v;
+}
+
+// Marching squares. Levels sit at k·interval (+ε so no grid value lies exactly on a level,
+// which keeps every crossing strictly inside a cell edge and lets segments chain cleanly).
+// Returns Map k → flat segment list [edgeA, edgeB, ax, ay, bx, by, …] in grid coordinates.
+function traceContours(f, w, h, interval) {
+  const eps = interval * 1e-7;
+  const buckets = new Map();
+  for (let y = 0; y < h - 1; y++) {
+    for (let x = 0; x < w - 1; x++) {
+      const i = y * w + x;
+      const a = f[i], b = f[i + 1], c = f[i + w + 1], d = f[i + w];
+      const lo = Math.min(a, b, c, d), hi = Math.max(a, b, c, d);
+      const k0 = Math.ceil((lo - eps) / interval), k1 = Math.ceil((hi - eps) / interval) - 1;
+      if (k1 < k0) continue;
+      // Edge ids: horizontal edge from grid point p → 2p, vertical → 2p+1
+      const eT = i * 2, eB = (i + w) * 2, eL = i * 2 + 1, eR = (i + 1) * 2 + 1;
+      for (let k = k0; k <= k1; k++) {
+        const L = k * interval + eps;
+        const idx = (a > L ? 8 : 0) | (b > L ? 4 : 0) | (c > L ? 2 : 0) | (d > L ? 1 : 0);
+        if (idx === 0 || idx === 15) continue;
+        let seg = buckets.get(k);
+        if (!seg) buckets.set(k, seg = []);
+        const T = () => [eT, x + (L - a) / (b - a), y];
+        const R = () => [eR, x + 1, y + (L - b) / (c - b)];
+        const B = () => [eB, x + (L - d) / (c - d), y + 1];
+        const Lf = () => [eL, x, y + (L - a) / (d - a)];
+        const add = (p, q) => seg.push(p[0], q[0], p[1], p[2], q[1], q[2]);
+        switch (idx) {
+          case 1: case 14: add(Lf(), B()); break;
+          case 2: case 13: add(B(), R()); break;
+          case 3: case 12: add(Lf(), R()); break;
+          case 4: case 11: add(T(), R()); break;
+          case 6: case 9:  add(T(), B()); break;
+          case 7: case 8:  add(Lf(), T()); break;
+          case 5: case 10: {
+            // Saddle — disambiguate with the cell-centre average
+            const centerHigh = (a + b + c + d) * 0.25 > L;
+            if ((idx === 5) === centerHigh) { add(Lf(), T()); add(B(), R()); }
+            else { add(T(), R()); add(Lf(), B()); }
+            break;
+          }
+        }
+      }
+    }
+  }
+  return buckets;
+}
+
+// Join segments that share a cell edge into continuous polylines (closed rings or edge-to-edge lines)
+function chainSegments(seg) {
+  const n = seg.length / 6;
+  const adj = new Map();
+  for (let s = 0; s < n; s++) {
+    for (const e of [seg[s * 6], seg[s * 6 + 1]]) {
+      const l = adj.get(e);
+      if (l) l.push(s); else adj.set(e, [s]);
+    }
+  }
+  const used = new Uint8Array(n);
+  const next = e => { for (const t of adj.get(e)) if (!used[t]) return t; return -1; };
+  // Walk from edge e, appending far endpoints to out; returns the final edge reached
+  const walk = (e, out) => {
+    for (let t = next(e); t >= 0; t = next(e)) {
+      used[t] = 1;
+      const o = t * 6;
+      if (seg[o] === e) { out.push(seg[o + 4], seg[o + 5]); e = seg[o + 1]; }
+      else { out.push(seg[o + 2], seg[o + 3]); e = seg[o]; }
+    }
+    return e;
+  };
+  const lines = [];
+  for (let s = 0; s < n; s++) {
+    if (used[s]) continue;
+    used[s] = 1;
+    const o = s * 6, startE = seg[o];
+    const fwd = [seg[o + 2], seg[o + 3], seg[o + 4], seg[o + 5]];
+    const endE = walk(seg[o + 1], fwd);
+    if (endE === startE) { fwd.length -= 2; lines.push({ pts: fwd, closed: true }); continue; }
+    const back = [];
+    walk(startE, back);
+    const pts = [];
+    for (let i = back.length - 2; i >= 0; i -= 2) pts.push(back[i], back[i + 1]);
+    for (const v of fwd) pts.push(v);
+    lines.push({ pts, closed: false });
+  }
+  return lines;
+}
+
+// Douglas–Peucker simplification; tol in output px (0.05 px is far below visible/print precision)
+const CONTOUR_SIMPLIFY_TOL = 0.05;
+function simplifyPolyline(pts, tol) {
+  const n = pts.length / 2;
+  if (n < 3) return pts;
+  const keep = new Uint8Array(n); keep[0] = keep[n - 1] = 1;
+  const stack = [0, n - 1], tol2 = tol * tol;
+  while (stack.length) {
+    const j = stack.pop(), i = stack.pop();
+    const ax = pts[i * 2], ay = pts[i * 2 + 1], dx = pts[j * 2] - ax, dy = pts[j * 2 + 1] - ay;
+    const len2 = dx * dx + dy * dy;
+    let maxD = 0, idx = -1;
+    for (let k = i + 1; k < j; k++) {
+      const px = pts[k * 2] - ax, py = pts[k * 2 + 1] - ay;
+      const t = len2 ? Math.max(0, Math.min(1, (px * dx + py * dy) / len2)) : 0;
+      const ex = px - t * dx, ey = py - t * dy, d2 = ex * ex + ey * ey;
+      if (d2 > maxD) { maxD = d2; idx = k; }
+    }
+    if (maxD > tol2) { keep[idx] = 1; stack.push(i, idx, idx, j); }
+  }
+  let m = 0;
+  for (let k = 0; k < n; k++) if (keep[k]) m++;
+  const out = new Float32Array(m * 2);
+  for (let k = 0, o = 0; k < n; k++) if (keep[k]) { out[o++] = pts[k * 2]; out[o++] = pts[k * 2 + 1]; }
+  return out;
+}
+
+function formatElev(v) { return String(+v.toFixed(3)); }
+function contourFont(size) { return `600 ${size}px "Helvetica Neue", Helvetica, Arial, sans-serif`; }
+const contourMeasureCtx = document.createElement('canvas').getContext('2d');
+
+function computeContourGeometry(layer, origGray, dw, dh, scale) {
+  const P = contourParams(layer);
+  const span = P.contourMaxElev - P.contourMinElev;
+  const nLevels = Math.abs(span) / P.contourInterval;
+  const geo = { P, lines: [], labels: [], levels: 0, nLevels, width: dw * scale, height: dh * scale };
+  if (!(P.contourInterval > 0) || !(nLevels <= MAX_CONTOUR_LEVELS)) return geo;
+
+  const field = buildElevationField(P, layer.invert, origGray, dw, dh);
+  const buckets = traceContours(field, dw, dh, P.contourInterval);
+  geo.levels = buckets.size;
+  for (const [k, seg] of buckets) {
+    const elev = k * P.contourInterval;
+    const isIndex = P.contourIndex > 0 && k % P.contourIndex === 0;
+    for (const c of chainSegments(seg)) {
+      const pts = new Float32Array(c.pts.length);
+      let length = 0;
+      for (let i = 0; i < pts.length; i += 2) {
+        pts[i] = (c.pts[i] + 0.5) * scale; pts[i + 1] = (c.pts[i + 1] + 0.5) * scale;
+        if (i) length += Math.hypot(pts[i] - pts[i - 2], pts[i + 1] - pts[i - 1]);
+      }
+      if (length < P.contourMinLen) continue;
+      geo.lines.push({ k, elev, isIndex, pts: simplifyPolyline(pts, CONTOUR_SIMPLIFY_TOL), closed: c.closed, length });
+    }
+  }
+  if (P.contourLabels) geo.labels = placeContourLabels(geo, field, dw, dh, scale);
+  return geo;
+}
+
+// Labels sit on straight stretches of index contours (all contours if index lines are off),
+// spaced along the line, never overlapping, and optionally rotated so the text top faces uphill.
+function placeContourLabels(geo, field, fw, fh, scale) {
+  const { P, width: W, height: H } = geo;
+  const size = P.contourLabelSize, spacing = P.contourLabelSpacing;
+  contourMeasureCtx.font = contourFont(size);
+  const labels = [];
+  const fAt = (x, y) => field[Math.min(fh - 1, Math.max(0, y)) * fw + Math.min(fw - 1, Math.max(0, x))];
+
+  for (const line of geo.lines) {
+    if (P.contourIndex > 0 && !line.isIndex) continue;
+    const text = formatElev(line.elev);
+    const boxW = contourMeasureCtx.measureText(text).width + size * 0.6, boxH = size * 1.2;
+    const half = boxW / 2 + size * 0.4;
+    if (line.length < half * 5) continue;
+
+    const pts = line.pts, n = pts.length / 2;
+    const cum = new Float32Array(n);
+    for (let i = 1; i < n; i++) cum[i] = cum[i - 1] + Math.hypot(pts[i * 2] - pts[i * 2 - 2], pts[i * 2 + 1] - pts[i * 2 - 1]);
+    const total = cum[n - 1];
+    const at = s => {
+      let lo = 0, hi = n - 1;
+      while (hi - lo > 1) { const m = (lo + hi) >> 1; if (cum[m] <= s) lo = m; else hi = m; }
+      const t = (s - cum[lo]) / ((cum[hi] - cum[lo]) || 1);
+      return [pts[lo * 2] + (pts[hi * 2] - pts[lo * 2]) * t, pts[lo * 2 + 1] + (pts[hi * 2 + 1] - pts[lo * 2 + 1]) * t];
+    };
+
+    // Stagger neighbouring index lines so labels don't stack into a column
+    const phase = ((Math.abs(line.k) * 0.618034) % 1) * spacing;
+    const targets = [];
+    if (total < spacing) targets.push(total / 2);
+    else for (let s = half + phase % Math.max(1, total - 2 * half); s < total - half; s += spacing) targets.push(s);
+
+    for (const s0 of targets) {
+      for (const off of [0, 0.08, -0.08, 0.16, -0.16, 0.25, -0.25]) {
+        const s = s0 + off * spacing;
+        if (s - half < 0 || s + half > total) continue;
+        const [x1, y1] = at(s - half), [x2, y2] = at(s + half), [cx, cy] = at(s);
+        const chord = Math.hypot(x2 - x1, y2 - y1);
+        if (chord < 2 * half * 0.94) continue; // too curved
+        const dev = Math.abs((x2 - x1) * (y1 - cy) - (x1 - cx) * (y2 - y1)) / (chord || 1);
+        if (dev > size * 0.2) continue;
+        if (cx - half < 0 || cx + half > W || cy - half < 0 || cy + half > H) continue;
+        if (labels.some(l => Math.hypot(l.x - cx, l.y - cy) < Math.max(l.w, boxW) + size * 1.5)) continue;
+        let angle = Math.atan2(y2 - y1, x2 - x1);
+        if (angle > Math.PI / 2) angle -= Math.PI;
+        if (angle <= -Math.PI / 2) angle += Math.PI;
+        if (P.contourUphill) {
+          const gx = Math.round(cx / scale - 0.5), gy = Math.round(cy / scale - 0.5);
+          const dx = fAt(gx + 1, gy) - fAt(gx - 1, gy), dy = fAt(gx, gy + 1) - fAt(gx, gy - 1);
+          // Text "up" after rotate(angle) is (sin, −cos); flip if that points downhill
+          if (Math.sin(angle) * dx - Math.cos(angle) * dy < 0) angle += Math.PI;
+        }
+        labels.push({ x: cx, y: cy, angle, text, w: boxW, h: boxH, elev: line.elev });
+        break;
+      }
+    }
+  }
+  return labels;
+}
+
+function labelBoxCorners(l) {
+  const c = Math.cos(l.angle), s = Math.sin(l.angle), hw = l.w / 2, hh = l.h / 2;
+  return [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]].map(([u, v]) => [l.x + u * c - v * s, l.y + u * s + v * c]);
+}
+
+function drawContourGeometry(ctx, geo, color) {
+  const { P, lines, labels } = geo;
+  ctx.save();
+  if (labels.length) {
+    // Break the lines under each label (even-odd: full canvas minus label boxes)
+    const clip = new Path2D();
+    clip.rect(-1, -1, ctx.canvas.width + 2, ctx.canvas.height + 2);
+    for (const l of labels) {
+      const c = labelBoxCorners(l);
+      clip.moveTo(c[0][0], c[0][1]);
+      for (let i = 1; i < 4; i++) clip.lineTo(c[i][0], c[i][1]);
+      clip.closePath();
+    }
+    ctx.clip(clip, 'evenodd');
+  }
+  const thin = new Path2D(), thick = new Path2D();
+  for (const line of lines) {
+    const p = line.isIndex ? thick : thin, pts = line.pts;
+    p.moveTo(pts[0], pts[1]);
+    for (let i = 2; i < pts.length; i += 2) p.lineTo(pts[i], pts[i + 1]);
+    if (line.closed) p.closePath();
+  }
+  ctx.strokeStyle = color; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.lineWidth = P.contourWidth; ctx.stroke(thin);
+  ctx.lineWidth = P.contourWidth * 2; ctx.stroke(thick);
+  ctx.restore();
+
+  ctx.fillStyle = color;
+  ctx.font = contourFont(P.contourLabelSize);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (const l of labels) {
+    ctx.save(); ctx.translate(l.x, l.y); ctx.rotate(l.angle);
+    ctx.fillText(l.text, 0, 0);
+    ctx.restore();
+  }
+}
+
+function updateContourInfo(geo) {
+  const srcEl = document.getElementById('contourSourceInfo');
+  const statsEl = document.getElementById('contourStats');
+  if (!sourceImage) { srcEl.textContent = ''; statsEl.textContent = ''; return; }
+  const { w, h } = getCanvasSize();
+  const P = geo ? geo.P : contourParams(selectedEffLayer() || CONTOUR_DEFAULTS);
+  const span = Math.abs(P.contourMaxElev - P.contourMinElev);
+  if (sourceElev) {
+    srcEl.textContent = `16-bit PNG DEM · 65 536 height steps (${formatElev(span / 65535)} m each) · sampled at ${w}×${h} px`;
+    srcEl.classList.remove('warn');
+  } else {
+    srcEl.textContent = `8-bit image · 256 height steps (${formatElev(span / 255)} m each). For survey precision upload a 16-bit grayscale PNG DEM.`;
+    srcEl.classList.add('warn');
+  }
+  if (!geo) { statsEl.textContent = ''; return; }
+  const step = sourceElev ? span / 65535 : span / 255;
+  if (!(P.contourInterval > 0) || !(geo.nLevels <= MAX_CONTOUR_LEVELS)) {
+    statsEl.textContent = `Interval too fine: ${Math.round(geo.nLevels)} levels (max ${MAX_CONTOUR_LEVELS}). Increase the interval.`;
+    statsEl.classList.add('warn');
+  } else if (P.contourInterval < step * 2 && P.contourSmooth < 1) {
+    statsEl.textContent = `Interval is close to the source's height step (${formatElev(step)} m) — lines will terrace. Add smoothing or use a 16-bit DEM.`;
+    statsEl.classList.add('warn');
+  } else {
+    statsEl.textContent = `${geo.levels} levels · ${geo.lines.length} lines · ${geo.labels.length} labels`;
+    statsEl.classList.remove('warn');
+  }
+}
+
+// ──────────────────────────────────────────────
 // Utilities
 // ──────────────────────────────────────────────
 function hexToRgb(hex) {
@@ -1991,6 +2545,65 @@ downloadBtn.addEventListener('click', () => {
   a.download = 'dithered.png';
   a.href = outCanvas.toDataURL('image/png');
   a.click();
+});
+
+// SVG export — contour layers become vector paths grouped by line type, each tagged with
+// its elevation; label gaps use a mask so the lines themselves stay unbroken in the file.
+const downloadSvgBtn = document.getElementById('downloadSvgBtn');
+downloadSvgBtn.addEventListener('click', async () => {
+  if (!sourceImage) return;
+  await renderAll();
+  const { w, h } = getCanvasSize();
+  const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const f2 = v => +v.toFixed(2);
+  const out = [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`,
+  ];
+  const bg = layers.find(l => l.type === 'bg');
+  if (bg && bg.visible) out.push(`<rect id="background" width="${w}" height="${h}" fill="${bg.color}"/>`);
+  let li = 0;
+  for (const layer of layers) {
+    if (layer.type !== 'effect' || !layer.visible) continue;
+    li++;
+    const opacity = layer.opacity / 100;
+    if (layer.ditherType !== 'contour') {
+      const lc = await renderEffectLayerToCanvas(layer);
+      out.push(`<image id="layer-${li}" data-name="${esc(layer.name)}" width="${w}" height="${h}" opacity="${opacity}" href="${lc.toDataURL('image/png')}"/>`);
+      continue;
+    }
+    const geo = lastContourGeo.get(layer.id);
+    if (!geo) continue;
+    const { P, lines, labels } = geo;
+    const pathFor = line => {
+      const p = line.pts, d = [`M${f2(p[0])} ${f2(p[1])}`];
+      for (let i = 2; i < p.length; i += 2) d.push(`L${f2(p[i])} ${f2(p[i + 1])}`);
+      if (line.closed) d.push('Z');
+      return `<path data-elevation="${formatElev(line.elev)}" d="${d.join('')}"/>`;
+    };
+    out.push(`<g id="layer-${li}" data-name="${esc(layer.name)}" opacity="${opacity}">`);
+    if (labels.length) {
+      out.push(`<mask id="label-gaps-${li}" maskUnits="userSpaceOnUse" x="0" y="0" width="${w}" height="${h}"><rect width="${w}" height="${h}" fill="#fff"/>`);
+      for (const l of labels) out.push(`<polygon fill="#000" points="${labelBoxCorners(l).map(c => c.map(f2).join(',')).join(' ')}"/>`);
+      out.push('</mask>');
+    }
+    out.push(`<g class="contours" fill="none" stroke="${layer.color}" stroke-linecap="round" stroke-linejoin="round"${labels.length ? ` mask="url(#label-gaps-${li})"` : ''}>`);
+    out.push(`<g class="intermediate" stroke-width="${P.contourWidth}">`, ...lines.filter(l => !l.isIndex).map(pathFor), '</g>');
+    out.push(`<g class="index" stroke-width="${P.contourWidth * 2}">`, ...lines.filter(l => l.isIndex).map(pathFor), '</g>');
+    out.push('</g>');
+    if (labels.length) {
+      out.push(`<g class="labels" fill="${layer.color}" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-weight="600" font-size="${P.contourLabelSize}" text-anchor="middle" dominant-baseline="central">`);
+      for (const l of labels) out.push(`<text data-elevation="${formatElev(l.elev)}" transform="translate(${f2(l.x)} ${f2(l.y)}) rotate(${f2(l.angle * 180 / Math.PI)})">${esc(l.text)}</text>`);
+      out.push('</g>');
+    }
+    out.push('</g>');
+  }
+  out.push('</svg>');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([out.join('\n')], { type: 'image/svg+xml' }));
+  a.download = 'contours.svg';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 });
 
 // ──────────────────────────────────────────────
@@ -2537,6 +3150,15 @@ function updateRightPanel() {
     invertChk.checked = layer.invert;
     opacitySlider.value = layer.opacity; opacityValEl.value = layer.opacity;
     color2In.value = layer.color; color2Hex.value = layer.color; color2Swatch.style.background = layer.color;
+    for (const prop of CONTOUR_CONTROLS) {
+      const v = layer[prop] ?? CONTOUR_DEFAULTS[prop];
+      const el = document.getElementById(prop);
+      if (el.type === 'checkbox') { el.checked = v; continue; }
+      el.value = v;
+      const pair = document.getElementById(prop + 'Val'); if (pair) pair.value = v;
+    }
+    updateContourVisibility();
+    if (layer.ditherType === 'contour') updateContourInfo(lastContourGeo.get(layer.id));
   }
 }
 
@@ -2601,6 +3223,7 @@ function getCurrentSettings() {
     ditherType: eff.ditherType, scale: eff.scale, threshold: eff.threshold,
     brightness: eff.brightness, contrast: eff.contrast, invert: eff.invert,
     opacity: eff.opacity, color1: bg ? bg.color : '#000000', color2: eff.color,
+    ...Object.fromEntries(CONTOUR_CONTROLS.map(p => [p, eff[p] ?? CONTOUR_DEFAULTS[p]])),
   };
 }
 
@@ -2611,6 +3234,7 @@ function applySettingsPreset(s) {
     eff.ditherType=s.ditherType; eff.scale=parseInt(s.scale); eff.threshold=parseInt(s.threshold);
     eff.brightness=parseInt(s.brightness); eff.contrast=parseInt(s.contrast);
     eff.invert=s.invert; eff.opacity=parseInt(s.opacity||100); eff.color=s.color2;
+    for (const prop of CONTOUR_CONTROLS) eff[prop] = s[prop] ?? CONTOUR_DEFAULTS[prop];
   }
   const bg = layers.find(l => l.type === 'bg');
   if (bg) bg.color = s.color1;
