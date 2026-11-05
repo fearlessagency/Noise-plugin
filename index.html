@@ -951,6 +951,7 @@
             <option value="dotScatter">Halftone — Dot Scatter</option>
             <option value="ringDots">Halftone — Ring Dots</option>
             <option value="contour">Topographic — Contour Lines</option>
+            <option value="topoBands">Topographic — Dotted Contours (simple)</option>
           </select>
         </div>
       </div>
@@ -967,7 +968,7 @@
           <input type="range" id="scale" min="1" max="12" value="1" step="1">
         </div>
 
-        <div class="control raster-only" style="margin-top:12px">
+        <div class="control raster-only threshold-ctl" style="margin-top:12px">
           <div class="control-row">
             <label>Threshold</label>
             <input type="number" class="value-input" id="thresholdVal" value="128" min="0" max="255" step="1">
@@ -1078,6 +1079,60 @@
         </div>
       </div>
 
+      <!-- Simple contour settings (only for Dotted Contours mode) -->
+      <div id="topoSettings" style="display:none; margin-top:20px">
+        <div class="section-label">Contours</div>
+        <div class="control">
+          <div class="control-row">
+            <label>Densest Spacing (px)</label>
+            <input type="number" class="value-input" id="topoSpacingVal" value="4" min="2" max="24" step="1">
+          </div>
+          <input type="range" id="topoSpacing" min="2" max="24" value="4" step="1">
+        </div>
+        <div class="control" style="margin-top:12px">
+          <div class="control-row">
+            <label>Direction (°)</label>
+            <input type="number" class="value-input" id="topoAngleVal" value="20" min="0" max="180" step="1">
+          </div>
+          <input type="range" id="topoAngle" min="0" max="180" value="20" step="1">
+        </div>
+        <div class="control" style="margin-top:12px">
+          <div class="control-row">
+            <label>Relief</label>
+            <input type="number" class="value-input" id="topoReliefVal" value="60" min="0" max="100" step="1">
+          </div>
+          <input type="range" id="topoRelief" min="0" max="100" value="60" step="1">
+        </div>
+        <div class="control" style="margin-top:12px">
+          <div class="control-row">
+            <label>Smoothing</label>
+            <input type="number" class="value-input" id="topoSmoothVal" value="3" min="0" max="12" step="0.5">
+          </div>
+          <input type="range" id="topoSmooth" min="0" max="12" value="3" step="0.5">
+        </div>
+        <div class="control" style="margin-top:12px">
+          <div class="control-row">
+            <label>Line Weight</label>
+            <input type="number" class="value-input" id="topoShadeVal" value="55" min="0" max="100" step="1">
+          </div>
+          <input type="range" id="topoShade" min="0" max="100" value="55" step="1">
+        </div>
+        <div class="control" style="margin-top:12px">
+          <div class="control-row">
+            <label>Follow Outline</label>
+            <input type="number" class="value-input" id="topoFollowVal" value="0" min="0" max="100" step="1">
+          </div>
+          <input type="range" id="topoFollow" min="0" max="100" value="0" step="1">
+        </div>
+        <div class="toggle-row" style="margin-top:12px">
+          <label>Dotted Lines</label>
+          <label class="toggle">
+            <input type="checkbox" id="topoDotted">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
       <!-- Dot Color + Opacity -->
       <div style="margin-top:20px">
         <div class="section-label" id="fgColorLabel">Dot Color</div>
@@ -1120,7 +1175,7 @@
       <div class="section-label">Settings Presets</div>
       <div style="display:flex;gap:6px;margin-bottom:8px">
         <input type="text" class="settings-preset-name" id="settingsPresetName" placeholder="Preset name…" maxlength="30">
-        <button class="btn-save-preset" id="saveSettingsPresetBtn" title="Save current settings as preset">
+        <button class="btn-save-preset" id="saveSettingsPresetBtn" title="Save the whole layer stack as a preset">
           <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
         </button>
       </div>
@@ -1133,7 +1188,7 @@
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
         Download PNG
       </button>
-      <button class="btn btn-outline" id="downloadSvgBtn" disabled title="Contour layers export as vector paths; other effects are embedded as images">Download SVG (vector contours)</button>
+      <button class="btn btn-outline" id="downloadSvgBtn" disabled title="Exports the whole layer stack as one vector group">Download SVG (all layers)</button>
       <button class="btn btn-outline" id="resetBtn" disabled>Reset Settings</button>
     </div>
 
@@ -1217,6 +1272,8 @@ const CONTOUR_DEFAULTS = {
   contourMinElev: 0, contourMaxElev: 1000, contourInterval: 20, contourIndex: 5,
   contourSmooth: 1.5, contourWidth: 1, contourMinLen: 16,
   contourLabels: true, contourLabelSize: 11, contourLabelSpacing: 360, contourUphill: true,
+  // Dotted Contours (simple) — the shape filled with dense contour lines
+  topoSpacing: 4, topoAngle: 20, topoRelief: 60, topoSmooth: 3, topoShade: 55, topoFollow: 0, topoDotted: false,
 };
 const CONTOUR_CONTROLS = Object.keys(CONTOUR_DEFAULTS);
 function makeEffectLayer() {
@@ -1339,11 +1396,15 @@ ditherType.addEventListener('change', () => { const l=selectedEffLayer(); if(l) 
 // Contour controls — bound to layer props. Ranges pair with a number input (<id>Val),
 // standalone number fields are validated, checkboxes are booleans.
 const contourSettingsEl = document.getElementById('contourSettings');
+const topoSettingsEl = document.getElementById('topoSettings');
 function updateContourVisibility() {
   const isContour = ditherType.value === 'contour';
+  const isTopoBands = ditherType.value === 'topoBands';
   contourSettingsEl.style.display = isContour ? '' : 'none';
+  topoSettingsEl.style.display = isTopoBands ? '' : 'none';
   document.querySelectorAll('.raster-only').forEach(el => el.style.display = isContour ? 'none' : '');
-  document.getElementById('fgColorLabel').textContent = isContour ? 'Line Color' : 'Dot Color';
+  document.querySelectorAll('.threshold-ctl').forEach(el => { if (isTopoBands) el.style.display = 'none'; });
+  document.getElementById('fgColorLabel').textContent = isContour || isTopoBands ? 'Line Color' : 'Dot Color';
 }
 function sanitizeContourValue(prop, v) {
   if (prop === 'contourInterval') return v > 0 ? v : null;
@@ -1664,7 +1725,9 @@ async function renderEffectLayerToCanvas(layer) {
     if (layer.id === selectedLayerId) updateContourInfo(geo);
     drawContourGeometry(lCtx, geo, layer.color);
   } else {
-    const result = applyDither(type, gray, dw, dh, layer.threshold);
+    const result = type === 'topoBands'
+      ? topoBandsDither(layer, gray, origGray, dw, dh)
+      : applyDither(type, gray, dw, dh, layer.threshold);
     const outOff = document.createElement('canvas');
     outOff.width=dw; outOff.height=dh;
     const octx2=outOff.getContext('2d');
@@ -2227,6 +2290,94 @@ function gaussianBlur(src, w, h, sigma) {
   return out;
 }
 
+// Dotted Contours (simple): the whole shape is filled with closely spaced contour lines.
+// Height = a tilted plane (parallel lines running across the shape, at Direction) + the image
+// tone (bends them over the form, like slices through a surface), optionally blended with the
+// distance from the silhouette edge (Follow Outline: rings that hug the outline).
+// Tone also sets line density: dense in shadows, sparse in highlights. Lines sit at every Spacing px of height; darker areas get
+// heavier lines, so tone reads as line weight and the shape stays saturated, never noisy.
+const LINE_RANK = [0, 4, 2, 6, 1, 5, 3, 7].map(r => r / 8);
+function topoBandsDither(layer, gray, origGray, w, h) {
+  const P = contourParams(layer);
+  // Silhouette: anything not pure white, softened, then holes filled (flood from the border),
+  // so light objects with white highlights still read as one solid shape
+  let dark = new Float32Array(w * h);
+  for (let i = 0; i < dark.length; i++) dark[i] = (255 - origGray[i]) / 255;
+  dark = gaussianBlur(dark, w, h, 2);
+  const outside = new Uint8Array(w * h), stack = [];
+  const seed = i => { if (!outside[i] && dark[i] < 0.03) { outside[i] = 1; stack.push(i); } };
+  for (let x = 0; x < w; x++) { seed(x); seed((h - 1) * w + x); }
+  for (let y = 0; y < h; y++) { seed(y * w); seed(y * w + w - 1); }
+  while (stack.length) {
+    const i = stack.pop(), x = i % w;
+    if (x > 0) seed(i - 1); if (x < w - 1) seed(i + 1);
+    if (i >= w) seed(i - w); if (i < w * (h - 1)) seed(i + w);
+  }
+  // Tone, stretched to the object's own range so pale objects still get full contrast
+  let t = new Float32Array(w * h);
+  for (let i = 0; i < t.length; i++) t[i] = (255 - gray[i]) / 255;
+  t = gaussianBlur(t, w, h, P.topoSmooth);
+  const vals = [];
+  for (let i = 0; i < t.length; i += 7) if (!outside[i]) vals.push(t[i]);
+  vals.sort((p, q) => p - q);
+  const lo = vals.length ? vals[Math.floor(vals.length * 0.02)] : 0;
+  const hi = vals.length ? vals[Math.floor(vals.length * 0.98)] : 1;
+  const span = Math.max(1e-3, hi - lo);
+  for (let i = 0; i < t.length; i++) t[i] = Math.max(0, Math.min(1, (t[i] - lo) / span));
+  // Chamfer distance to the outside (3-4 weights → px ≈ d/3), smoothed to round off the corners
+  const BIG = 1e9;
+  let d = new Float32Array(w * h);
+  const follow = P.topoFollow / 100;
+  if (follow > 0) {
+    for (let i = 0; i < d.length; i++) d[i] = outside[i] ? 0 : BIG;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = y * w + x; if (!d[i]) continue;
+      let v = d[i];
+      if (x > 0) v = Math.min(v, d[i - 1] + 3);
+      if (y > 0) {
+        v = Math.min(v, d[i - w] + 3);
+        if (x > 0) v = Math.min(v, d[i - w - 1] + 4);
+        if (x < w - 1) v = Math.min(v, d[i - w + 1] + 4);
+      }
+      d[i] = v;
+    }
+    for (let y = h - 1; y >= 0; y--) for (let x = w - 1; x >= 0; x--) {
+      const i = y * w + x; if (!d[i]) continue;
+      let v = d[i];
+      if (x < w - 1) v = Math.min(v, d[i + 1] + 3);
+      if (y < h - 1) {
+        v = Math.min(v, d[i + w] + 3);
+        if (x < w - 1) v = Math.min(v, d[i + w + 1] + 4);
+        if (x > 0) v = Math.min(v, d[i + w - 1] + 4);
+      }
+      d[i] = v;
+    }
+    for (let i = 0; i < d.length; i++) d[i] = Math.min(d[i], 3 * (w + h)) / 3;
+    d = gaussianBlur(d, w, h, 1.5);
+  }
+  const spacing = Math.max(2, P.topoSpacing);
+  const relief = P.topoRelief / 100 * 60;   // tone lifts the surface by up to 60 px
+  const weight = P.topoShade / 100;
+  // Lines run along Direction, so the height increases across it
+  const ang = P.topoAngle * Math.PI / 180, ca = -Math.sin(ang), sa = Math.cos(ang);
+  const out = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = y * w + x;
+    if (outside[i]) continue;
+    const plane = x * ca + y * sa;
+    const hgt = ((follow > 0 ? plane * (1 - follow) + d[i] * follow : plane) + t[i] * relief) / spacing;
+    const k = Math.floor(hgt), f = hgt - k;
+    // Density: shadows keep every line, highlights only every 2nd/4th/8th. Lines drop out in
+    // bit-reversed order, so the ones that remain are always evenly spaced and continuous.
+    if (LINE_RANK[k & 7] >= 0.12 + 0.88 * t[i]) continue;
+    // Thickness as a share of the spacing, slightly heavier in shadows; never under one pixel
+    const cov = Math.max(1 / spacing, Math.min(1 - 1 / spacing, weight * (0.5 + 0.5 * t[i])));
+    if (f < cov) out[i] = 1;
+  }
+  if (P.topoDotted) for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if ((x + y) & 1) out[y * w + x] = 0;
+  return out;
+}
+
 function contourParams(layer) {
   return Object.fromEntries(CONTOUR_CONTROLS.map(p => [p, layer[p] ?? CONTOUR_DEFAULTS[p]]));
 }
@@ -2547,8 +2698,33 @@ downloadBtn.addEventListener('click', () => {
   a.click();
 });
 
-// SVG export — contour layers become vector paths grouped by line type, each tagged with
-// its elevation; label gaps use a mask so the lines themselves stay unbroken in the file.
+// SVG export — the whole stack becomes one group (one sub-group per layer, bottom to top).
+// Contour layers become vector paths grouped by line type, each tagged with its elevation;
+// label gaps use a mask so the lines themselves stay unbroken in the file. Every other effect
+// is traced from its rendered pixels into filled rectangles, so nothing is embedded as an image.
+
+// Pixel mask → one path of rects: horizontal runs per row, identical consecutive rows merged
+function traceLayerToPath(canvas) {
+  const { width: w, height: h } = canvas;
+  const a = canvas.getContext('2d').getImageData(0, 0, w, h).data;
+  const d = [];
+  let prevKey = null, prevRuns = null, startY = 0;
+  const flush = y => { if (prevRuns) for (const [x0, x1] of prevRuns) d.push(`M${x0} ${startY}h${x1 - x0}v${y - startY}h${x0 - x1}z`); };
+  for (let y = 0; y < h; y++) {
+    const runs = [];
+    for (let x = 0; x < w; x++) {
+      if (a[(y * w + x) * 4 + 3] < 128) continue;
+      const x0 = x;
+      while (x < w && a[(y * w + x) * 4 + 3] >= 128) x++;
+      runs.push([x0, x]);
+    }
+    const key = runs.join(';');
+    if (key !== prevKey) { flush(y); prevKey = key; prevRuns = runs.length ? runs : null; startY = y; }
+  }
+  flush(h);
+  return d.join('');
+}
+
 const downloadSvgBtn = document.getElementById('downloadSvgBtn');
 downloadSvgBtn.addEventListener('click', async () => {
   if (!sourceImage) return;
@@ -2559,6 +2735,7 @@ downloadSvgBtn.addEventListener('click', async () => {
   const out = [
     '<?xml version="1.0" encoding="UTF-8"?>',
     `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`,
+    '<g id="stack">',
   ];
   const bg = layers.find(l => l.type === 'bg');
   if (bg && bg.visible) out.push(`<rect id="background" width="${w}" height="${h}" fill="${bg.color}"/>`);
@@ -2569,7 +2746,7 @@ downloadSvgBtn.addEventListener('click', async () => {
     const opacity = layer.opacity / 100;
     if (layer.ditherType !== 'contour') {
       const lc = await renderEffectLayerToCanvas(layer);
-      out.push(`<image id="layer-${li}" data-name="${esc(layer.name)}" width="${w}" height="${h}" opacity="${opacity}" href="${lc.toDataURL('image/png')}"/>`);
+      out.push(`<path id="layer-${li}" data-name="${esc(layer.name)}" data-effect="${layer.ditherType}" fill="${layer.color}" opacity="${opacity}" shape-rendering="crispEdges" d="${traceLayerToPath(lc)}"/>`);
       continue;
     }
     const geo = lastContourGeo.get(layer.id);
@@ -2598,10 +2775,10 @@ downloadSvgBtn.addEventListener('click', async () => {
     }
     out.push('</g>');
   }
-  out.push('</svg>');
+  out.push('</g>', '</svg>');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([out.join('\n')], { type: 'image/svg+xml' }));
-  a.download = 'contours.svg';
+  a.download = 'noise-stack.svg';
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 });
@@ -3227,8 +3404,26 @@ function getCurrentSettings() {
   };
 }
 
+// A preset holds the whole stack (background + every effect layer, in order)
+function getCurrentStack() {
+  return layers.map(l => ({ ...l }));
+}
+
 function applySettingsPreset(s) {
   if (!s) return;
+  if (s.stack) {
+    // Fresh ids so the applied stack never collides with layers already on the canvas
+    _layerCnt = 0;
+    layers = s.stack.map(l => {
+      if (l.type === 'bg') return { ...l, id: 'bg' };
+      _layerCnt++;
+      return { ...CONTOUR_DEFAULTS, ...l, id: 'eff_' + _layerCnt };
+    });
+    if (!layers.some(l => l.type === 'bg')) layers.unshift(makeBgLayer(s.color1));
+    selectedLayerId = [...layers].reverse().find(l => l.type === 'effect')?.id || 'bg';
+    buildLayersPanel(); updateRightPanel(); scheduleRender(true); captureHistory();
+    return;
+  }
   const eff = selectedEffLayer();
   if (eff) {
     eff.ditherType=s.ditherType; eff.scale=parseInt(s.scale); eff.threshold=parseInt(s.threshold);
@@ -3251,12 +3446,13 @@ function renderSettingsPresetList() {
   settingsPresets.forEach((p, i) => {
     const el = document.createElement('div');
     el.className = 'settings-preset-item';
+    const colors = p.stack ? p.stack.map(l => l.color) : [p.color1, p.color2];
+    const nEff = p.stack ? p.stack.filter(l => l.type === 'effect').length : 1;
     el.innerHTML = `
       <div class="preset-swatches">
-        <div class="preset-swatch" style="background:${p.color1}"></div>
-        <div class="preset-swatch" style="background:${p.color2}"></div>
+        ${colors.map(c => `<div class="preset-swatch" style="background:${c}"></div>`).join('')}
       </div>
-      <span class="preset-name">${p.name}</span>
+      <span class="preset-name">${p.name}${nEff > 1 ? ` · ${nEff} layers` : ''}</span>
       <button class="preset-del" title="Delete">×</button>
     `;
     el.querySelector('.preset-del').addEventListener('click', (e) => {
@@ -3273,7 +3469,7 @@ function renderSettingsPresetList() {
 document.getElementById('saveSettingsPresetBtn').addEventListener('click', () => {
   const nameInput = document.getElementById('settingsPresetName');
   const name = nameInput.value.trim() || `Preset ${settingsPresets.length + 1}`;
-  settingsPresets.push({ name, ...getCurrentSettings() });
+  settingsPresets.push({ name, ...getCurrentSettings(), stack: getCurrentStack() });
   saveSettingsPresetsToStorage();
   renderSettingsPresetList();
   nameInput.value = '';
